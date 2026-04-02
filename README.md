@@ -121,29 +121,5 @@ npm start
 ---
 
 
-## Getting Started
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/brendan-chia/asean-youth.git
-   cd asean-youth
-   ```
-
-2. **Install dependencies**
-   ```bash
-   cd safelah
-   npm install
-   ```
-
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your API keys
-   ```
-
-4. **Run the bot**
-   ```bash
-   npm start
-   ```
 
 
