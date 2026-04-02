@@ -1,0 +1,55 @@
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+safelah/gen-lang-client-0571774162-6868eb36fa06.json
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# WhatsApp session/cache artifacts (very noisy and sensitive)
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temp/runtime files
+tmp/
+temp/
+*.tmp
+*.pid
+*.pid.lock
+
+# Coverage and test outputs
+coverage/
+.nyc_output/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Browser/system noise
+BrowserMetrics-spare.pma
+DevToolsActivePort
+first_party_sets.db-journal
+Last Browser
+Last Version
+Local State
+Variations
+crl-set
+*.pma
+
+# OS artifacts
+.DS_Store
+Thumbs.db

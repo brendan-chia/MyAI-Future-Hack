@@ -1,0 +1,53 @@
+# Dependencies (always in subdirectories)
+node_modules/
+*/node_modules/
+
+# Package lock files
+package-lock.json
+*/package-lock.json
+yarn.lock
+*/yarn.lock
+
+# Environment variables (keep .env.example)
+.env
+.env.*
+!.env.example
+/safelah/gen-lang-client-0571774162-6868eb36fa06.json
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Logs and debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime files
+dist/
+build/
+.next/
+out/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.pid
+*.pid.lock

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SelamatLah — Semak Mesej Mencurigakan</title>
+  <meta name="description" content="SelamatLah helps you check if a message is a scam. Paste any suspicious text or screenshot and get instant analysis.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon">🛡️</span>
+          <div class="logo-text">
+            <h1>SelamatLah</h1>
+            <span class="tagline">Scam Detection Assistant</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-dot"></div>
+        <span class="status-text">Online</span>
+      </div>
+    </header>
+
+    <!-- Chat area -->
+    <main class="chat-area" id="chatArea">
+      <div class="chat-date">
+        <span>Today</span>
+      </div>
+
+      <!-- Welcome message -->
+      <div class="message bot-message welcome-msg" id="welcomeMsg">
+        <div class="message-avatar">🛡️</div>
+        <div class="message-content">
+          <div class="message-bubble">
+            <p class="msg-greeting">Salam! Saya <strong>SelamatLah</strong> — pembantu semakan penipuan anda.</p>
+            <div class="msg-steps">
+              <div class="step">
+                <span class="step-num">1</span>
+                <span>Paste atau taip mesej mencurigakan di bawah</span>
+              </div>
+              <div class="step">
+                <span class="step-num">2</span>
+                <span>Atau seret & lepas tangkapan skrin (screenshot)</span>
+              </div>
+              <div class="step">
+                <span class="step-num">3</span>
+                <span>Saya akan beritahu jika ia selamat atau penipuan</span>
+              </div>
+            </div>
+            <p class="msg-safe">Percuma • Selamat • Tiada data disimpan</p>
+          </div>
+          <span class="message-time">SelamatLah Bot</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Image preview bar (shows when image attached) -->
+    <div class="image-preview-bar" id="imagePreviewBar" style="display:none;">
+      <div class="image-preview-inner">
+        <img id="imagePreviewImg" src="" alt="Preview">
+        <button class="image-remove-btn" id="imageRemoveBtn" title="Remove image">✕</button>
+      </div>
+      <span class="image-preview-label">Screenshot attached</span>
+    </div>
+
+    <!-- Input area -->
+    <footer class="input-area">
+      <div class="input-container">
+        <label class="attach-btn" id="attachBtn" title="Attach screenshot">
+          <input type="file" accept="image/*" id="imageInput" hidden>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </label>
+        <textarea
+          id="messageInput"
+          placeholder="Paste mesej mencurigakan di sini..."
+          rows="1"
+          autofocus
+        ></textarea>
+        <button class="send-btn" id="sendBtn" title="Semak mesej" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <p class="input-hint">Tip: Boleh juga seret & lepas screenshot terus ke chat</p>
+    </footer>
+  </div>
+
+  <!-- Drop zone overlay -->
+  <div class="drop-overlay" id="dropOverlay">
+    <div class="drop-content">
+      <div class="drop-icon">📷</div>
+      <p>Lepaskan screenshot di sini</p>
+    </div>
+  </div>
+
+  <script src="chat.js"></script>
+</body>
+</html>
