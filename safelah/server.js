@@ -114,7 +114,6 @@ app.get('/api/admin/stats', adminGuard, (req, res) => {
  *   indicator_phone – scammer phone extracted from reported message
  *   indicator_account – bank account extracted from reported message
  *   indicator_url   – URL extracted from reported message
- *   state_estimate  – approximate state of the VICTIM (from phone prefix)
  *   confidence      – AI confidence 0.0–1.0
  *   user_confirmed  – 1 if victim confirmed they experienced this scam
  *   created_at      – UTC timestamp of the report
@@ -130,7 +129,7 @@ app.get('/api/admin/export', adminGuard, (req, res) => {
     const COLS = [
       'id', 'scam_type', 'risk_level',
       'indicator_phone', 'indicator_account', 'indicator_url',
-      'state_estimate', 'confidence', 'user_confirmed', 'created_at',
+      'confidence', 'user_confirmed', 'created_at',
     ];
 
     const escape = (v) => {
