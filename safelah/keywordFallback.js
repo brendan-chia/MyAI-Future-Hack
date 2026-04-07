@@ -66,13 +66,14 @@ const MEDIUM_RISK_PATTERNS = [
 
 function keywordAnalyse(text) {
   for (const entry of HIGH_RISK_PATTERNS) {
-    if (entry.pattern.test(text)) {
+    const pattern = entry?.pattern || entry;
+    if (pattern instanceof RegExp && pattern.test(text)) {
       return {
         risk_level: 'HIGH',
-        scam_type: entry.type,
+        scam_type: entry.type || 'UNKNOWN_SCAM',
         confidence: 0.7,
-        reason_bm: entry.reason_bm,
-        reason_en: entry.reason_en,
+        reason_bm: entry.reason_bm || 'Mesej ini mengandungi corak yang sering dikaitkan dengan penipuan.',
+        reason_en: entry.reason_en || 'This message contains patterns often associated with scams.',
         extracted_phones: [],
         extracted_accounts: [],
         extracted_urls: [],
@@ -81,13 +82,14 @@ function keywordAnalyse(text) {
     }
   }
   for (const entry of MEDIUM_RISK_PATTERNS) {
-    if (entry.pattern.test(text)) {
+    const pattern = entry?.pattern || entry;
+    if (pattern instanceof RegExp && pattern.test(text)) {
       return {
         risk_level: 'MEDIUM',
-        scam_type: entry.type,
+        scam_type: entry.type || 'UNKNOWN_SCAM',
         confidence: 0.5,
-        reason_bm: entry.reason_bm,
-        reason_en: entry.reason_en,
+        reason_bm: entry.reason_bm || 'Mesej ini mempunyai beberapa tanda amaran yang memerlukan semakan lanjut.',
+        reason_en: entry.reason_en || 'This message shows warning signs that require caution.',
         extracted_phones: [],
         extracted_accounts: [],
         extracted_urls: [],

@@ -1,9 +1,15 @@
 const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
+const { genkit} = require('genkit');
+const { googleAI } = require('@genkit-ai/googleai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const ai = genkit({
+  plugins: [googleAI({ apiKey: process.env.GEMINI_API_KEY })],
+});
+
 
 // ── System instruction ───────────────────────────────────────────────────────
-const SYSTEM_INSTRUCTION = `You are SelamatLah, a Malaysian scam detection AI. Analyse messages for scam indicators targeting Malaysian users.
+const SYSTEM_INSTRUCTION = `You are SafeLah, a Malaysian scam detection AI. Analyse messages for scam indicators targeting Malaysian users.
 
 IMPORTANT: E-commerce task scams (JOB_SCAM) are EXTREMELY common in Malaysia right now. Messages recruiting people to "click orders", "write reviews", "boost ratings", or "complete tasks" for e-commerce platforms (Shopee, Lazada, TikTok Shop, Amazon, etc.) for unrealistic daily pay are ALWAYS HIGH RISK scams. Flag them aggressively.
 
@@ -63,7 +69,7 @@ const SAFETY_SETTINGS = [
 
 function getModel() {
   return genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-3.1-flash-lite-preview',
     systemInstruction: SYSTEM_INSTRUCTION,
     safetySettings: SAFETY_SETTINGS,
     generationConfig: {
@@ -213,4 +219,4 @@ Provide ONE overall verdict for this conversation as a whole AND identify if thi
   return null; // triggers keyword fallback
 }
 
-module.exports = { analyseWithGemini, analyseImageWithGemini, extractTextFromImage, analyseConversationWithGemini };
+module.exports = { ai, analyseWithGemini, analyseImageWithGemini, extractTextFromImage, analyseConversationWithGemini };
