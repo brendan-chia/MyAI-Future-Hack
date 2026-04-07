@@ -62,8 +62,6 @@ const dbReady = (async () => {
       indicator_phone  TEXT,
       indicator_account TEXT,
       indicator_url    TEXT,
-      -- Approximate location from caller prefix (e.g. 'Selangor', 'Sarawak')
-      state_estimate   TEXT,
       -- Confidence score from Gemini (0.0–1.0)
       confidence       REAL DEFAULT 0,
       -- Whether user confirmed this was a real scam attempt they experienced
@@ -110,7 +108,6 @@ const dbReady = (async () => {
     [`ALTER TABLE scam_logs ADD COLUMN indicator_phone TEXT`, 'scam_logs.indicator_phone'],
     [`ALTER TABLE scam_logs ADD COLUMN indicator_account TEXT`, 'scam_logs.indicator_account'],
     [`ALTER TABLE scam_logs ADD COLUMN indicator_url TEXT`, 'scam_logs.indicator_url'],
-    [`ALTER TABLE scam_logs ADD COLUMN state_estimate TEXT`, 'scam_logs.state_estimate'],
     [`ALTER TABLE scam_logs ADD COLUMN confidence REAL DEFAULT 0`, 'scam_logs.confidence'],
     [`ALTER TABLE scam_logs ADD COLUMN user_confirmed INTEGER DEFAULT 0`, 'scam_logs.user_confirmed'],
   ];

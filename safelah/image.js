@@ -1,10 +1,7 @@
-const { extractTextFromImage, analyseWithGemini, analyseImageWithGemini } = require('./gemini');
+const { extractTextFromImage, analyseImageWithGemini } = require('./gemini');
 const { sendMessage, downloadMedia } = require('./whatsapp');
-const { checkSemakMule }     = require('./semakmule');
-const { scanUrl }            = require('./virustotal');
-const { keywordAnalyse }     = require('./keywordFallback');
 const { buildVerdict }       = require('./verdictBuilder');
-const { extractEntities }    = require('./extractor');
+const { runScamDetectionFlow } = require('./text');
 const { detectLanguage }     = require('./language');
 const { notifyGuardians }    = require('./guardian');
 const { logScamIntelligence } = require('./queries');
@@ -78,50 +75,15 @@ async function analyseImage(from, message) {
     const text = extraction.extracted_text;
     const lang = detectLanguage(text);
 
-    // Also run regex extraction on OCR text (supplements Gemini Vision extraction)
-    const regexEntities = extractEntities(text);
-
-    // Merge phones/accounts/urls from Vision extraction + regex extraction
-    const allPhones   = [...new Set([...(extraction.phones || []), ...regexEntities.phones])];
-    const allAccounts = [...new Set([...(extraction.accounts || []), ...regexEntities.accounts])];
-    const allUrls     = [...new Set([...(extraction.urls || []), ...regexEntities.urls])];
-
-    // Run Gemini NLP analysis WITH visual context
-    let result = await analyseWithGemini(text, extraction.visual_cues || '');
-
-    // Keyword fallback if Gemini NLP call fails
-    if (!result) {
-      console.warn('[image] Stage 2 Gemini NLP unavailable, using keyword fallback');
-      result = keywordAnalyse(text);
-      result.extracted_phones   = allPhones;
-      result.extracted_accounts = allAccounts;
-      result.extracted_urls     = allUrls;
-    } else {
-      // Merge Vision-extracted entities into Gemini result
-      result.extracted_phones   = [...new Set([...(result.extracted_phones || []), ...allPhones])];
-      result.extracted_accounts = [...new Set([...(result.extracted_accounts || []), ...allAccounts])];
-      result.extracted_urls     = [...new Set([...(result.extracted_urls || []), ...allUrls])];
-    }
-
-    // ── CCID Semak Mule check ───────────────────────────────────────────
-    let ccidResult = { found: false, reports: 0 };
-    const checkTarget = result.extracted_phones[0] || result.extracted_accounts[0];
-    if (checkTarget) {
-      const category = result.extracted_phones[0] ? 'phone' : 'bank';
-      ccidResult = await checkSemakMule(checkTarget, category);
-      if (ccidResult.found && result.risk_level === 'LOW')  result.risk_level = 'MEDIUM';
-      if (ccidResult.reports >= 3)                          result.risk_level = 'HIGH';
-    }
-
-    // ── VirusTotal URL scan ─────────────────────────────────────────────
-    const urlToScan = result.extracted_urls[0];
-    if (urlToScan) {
-      const vtResult = await scanUrl(urlToScan);
-      if (vtResult?.is_malicious) {
-        result.risk_level = 'HIGH';
-        result.scam_type  = result.scam_type || 'PHISHING_LINK';
-      }
-    }
+    const result = await runScamDetectionFlow({
+      text,
+      phone: from,
+      visualContext: extraction.visual_cues || '',
+      preExtractedPhones: extraction.phones || [],
+      preExtractedAccounts: extraction.accounts || [],
+      preExtractedUrls: extraction.urls || [],
+    });
+    const ccidResult = result.ccidResult || { found: false, reports: 0 };
 
     // ── Send verdict ────────────────────────────────────────────────────
     const verdictMsg = buildVerdict(result, ccidResult, lang);
@@ -186,44 +148,15 @@ async function analyseImageDirect(base64Data, mimeType) {
 
     // Stage 2: Deep analysis
     const text = extraction.extracted_text;
-    const regexEntities = extractEntities(text);
-
-    const allPhones   = [...new Set([...(extraction.phones || []), ...regexEntities.phones])];
-    const allAccounts = [...new Set([...(extraction.accounts || []), ...regexEntities.accounts])];
-    const allUrls     = [...new Set([...(extraction.urls || []), ...regexEntities.urls])];
-
-    let result = await analyseWithGemini(text, extraction.visual_cues || '');
-
-    if (!result) {
-      result = keywordAnalyse(text);
-      result.extracted_phones   = allPhones;
-      result.extracted_accounts = allAccounts;
-      result.extracted_urls     = allUrls;
-    } else {
-      result.extracted_phones   = [...new Set([...(result.extracted_phones || []), ...allPhones])];
-      result.extracted_accounts = [...new Set([...(result.extracted_accounts || []), ...allAccounts])];
-      result.extracted_urls     = [...new Set([...(result.extracted_urls || []), ...allUrls])];
-    }
-
-    // CCID check
-    let ccidResult = { found: false, reports: 0 };
-    const checkTarget = result.extracted_phones[0] || result.extracted_accounts[0];
-    if (checkTarget) {
-      const category = result.extracted_phones[0] ? 'phone' : 'bank';
-      ccidResult = await checkSemakMule(checkTarget, category);
-      if (ccidResult.found && result.risk_level === 'LOW')  result.risk_level = 'MEDIUM';
-      if (ccidResult.reports >= 3)                          result.risk_level = 'HIGH';
-    }
-
-    // VirusTotal scan
-    const urlToScan = result.extracted_urls[0];
-    if (urlToScan) {
-      const vtResult = await scanUrl(urlToScan);
-      if (vtResult?.is_malicious) {
-        result.risk_level = 'HIGH';
-        result.scam_type  = result.scam_type || 'PHISHING_LINK';
-      }
-    }
+    const result = await runScamDetectionFlow({
+      text,
+      phone: 'web-upload',
+      visualContext: extraction.visual_cues || '',
+      preExtractedPhones: extraction.phones || [],
+      preExtractedAccounts: extraction.accounts || [],
+      preExtractedUrls: extraction.urls || [],
+    });
+    const ccidResult = result.ccidResult || { found: false, reports: 0 };
 
     const verdictMsg = buildVerdict(result, ccidResult, detectLanguage(text));
     logScamIntelligence({

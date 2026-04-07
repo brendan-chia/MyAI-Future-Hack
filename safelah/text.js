@@ -11,6 +11,10 @@ const { logScamIntelligence } = require('./queries');
 const { ai }                = require('./gemini');
 const { z }                 = require('zod');
 
+function uniqueStrings(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).filter(v => typeof v === 'string' && v.trim()))];
+}
+
 function normalizeFlowResult(raw = {}, fallbackEntities = {}) {
   const safe = { ...raw };
   const allowedRisk = ['HIGH', 'MEDIUM', 'LOW'];
@@ -52,6 +56,10 @@ const scamDetectionFlow = ai.defineFlow(
     inputSchema: z.object({
       text:      z.string(),
       phone:     z.string(),
+      visual_context: z.string().optional(),
+      pre_extracted_phones: z.array(z.string()).optional(),
+      pre_extracted_accounts: z.array(z.string()).optional(),
+      pre_extracted_urls: z.array(z.string()).optional(),
     }),
     outputSchema: z.object({
       risk_level:         z.enum(['HIGH', 'MEDIUM', 'LOW']),
@@ -66,10 +74,13 @@ const scamDetectionFlow = ai.defineFlow(
       ccidResult:         z.any().optional(),
     }),
   },
-  async ({ text, phone }) => {
+  async ({ text, phone, visual_context = '', pre_extracted_phones = [], pre_extracted_accounts = [], pre_extracted_urls = [] }) => {
 
     // Layer 1 — pre-filter (keyword + entity extraction, free, offline)
-    const { phones, accounts, urls } = extractEntities(text);
+    const extracted = extractEntities(text);
+    const phones = uniqueStrings([...(extracted.phones || []), ...pre_extracted_phones]);
+    const accounts = uniqueStrings([...(extracted.accounts || []), ...pre_extracted_accounts]);
+    const urls = uniqueStrings([...(extracted.urls || []), ...pre_extracted_urls]);
 
     // Layer 2 — short-circuit: if keyword fallback catches obvious HIGH, skip Gemini
     const quickCheck = keywordAnalyse(text);
@@ -82,7 +93,7 @@ const scamDetectionFlow = ai.defineFlow(
     }
 
     // Layer 3 — Gemini AI analysis (only runs if layer 1 is inconclusive)
-    let result = await analyseWithGemini(text);
+    let result = await analyseWithGemini(text, visual_context);
 
     if (!result) {
       // Gemini unavailable — fall back to keyword result
@@ -121,12 +132,23 @@ const scamDetectionFlow = ai.defineFlow(
   }
 );
 
+async function runScamDetectionFlow({ text, phone, visualContext = '', preExtractedPhones = [], preExtractedAccounts = [], preExtractedUrls = [] }) {
+  return scamDetectionFlow({
+    text,
+    phone,
+    visual_context: visualContext,
+    pre_extracted_phones: preExtractedPhones,
+    pre_extracted_accounts: preExtractedAccounts,
+    pre_extracted_urls: preExtractedUrls,
+  });
+}
+
   async function analyseText(from, text, batchMode = false, forceLang = null) {
   const lang  = forceLang || detectLanguage(text);
   const phone = from;
 
   // ── Run the Genkit flow (layers 1–4) ──────────────────────────────────────
-  const result = await scamDetectionFlow({ text, phone });
+  const result = await runScamDetectionFlow({ text, phone });
   const ccidResult = result.ccidResult || { found: false, reports: 0 };
 
   // ── Everything below is unchanged from your original code ─────────────────
@@ -160,4 +182,4 @@ const scamDetectionFlow = ai.defineFlow(
   return result;
 }
 
-module.exports = { analyseText };
+module.exports = { analyseText, runScamDetectionFlow };
