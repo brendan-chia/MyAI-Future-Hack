@@ -72,25 +72,22 @@ function checkRateLimit(phone, maxPerHour = 10) {
  * @param {object} opts
  * @param {string}  opts.scamType        - e.g. 'JOB_SCAM'
  * @param {string}  opts.riskLevel       - 'HIGH' | 'MEDIUM' | 'LOW'
- * @param {string}  [opts.callerPhone]   - caller's phone (used ONLY to derive state, NOT stored)
  * @param {string[]} [opts.phones]       - scammer phone numbers extracted from message
  * @param {string[]} [opts.accounts]     - bank accounts extracted from message
  * @param {string[]} [opts.urls]         - URLs extracted from message
  * @param {number}  [opts.confidence]    - Gemini confidence 0–1
  */
-function logScamIntelligence({ scamType, riskLevel, callerPhone, phones = [], accounts = [], urls = [], confidence = 0 }) {
-  const state = estimateState(callerPhone);
+function logScamIntelligence({ scamType, riskLevel, phones = [], accounts = [], urls = [], confidence = 0 }) {
   run(
     `INSERT INTO scam_logs
-       (scam_type, risk_level, indicator_phone, indicator_account, indicator_url, state_estimate, confidence)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (scam_type, risk_level, indicator_phone, indicator_account, indicator_url, confidence)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [
       scamType || 'UNKNOWN',
       riskLevel,
       phones[0]    || null,   // store first extracted scammer number (not caller)
       accounts[0]  || null,
       urls[0]      || null,
-      state,
       confidence,
     ]
   );
@@ -105,9 +102,8 @@ function logScam(scamType, riskLevel) {
 function getScamStats() {
   const total   = getOne('SELECT COUNT(*) as n FROM scam_logs WHERE risk_level IN ("HIGH","MEDIUM")');
   const byType  = getAll('SELECT scam_type, COUNT(*) as n FROM scam_logs WHERE risk_level IN ("HIGH","MEDIUM") GROUP BY scam_type ORDER BY n DESC');
-  const byState = getAll('SELECT state_estimate, COUNT(*) as n FROM scam_logs WHERE state_estimate IS NOT NULL GROUP BY state_estimate ORDER BY n DESC');
   const recent7 = getOne(`SELECT COUNT(*) as n FROM scam_logs WHERE created_at >= date('now','-7 days') AND risk_level IN ("HIGH","MEDIUM")`);
-  return { total: total?.n || 0, recent7: recent7?.n || 0, byType, byState };
+  return { total: total?.n || 0, recent7: recent7?.n || 0, byType };
 }
 
 /** Returns rows suitable for CSV export to hand off to PDRM */
@@ -123,7 +119,6 @@ function getExportData(from, to) {
       indicator_phone,
       indicator_account,
       indicator_url,
-      state_estimate,
       confidence,
       user_confirmed,
       created_at

@@ -143,7 +143,7 @@ async function extractTextFromImage(base64Image, mimeType = 'image/jpeg', retrie
   for (let i = 0; i <= retries; i++) {
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3.1-flash-lite-preview',
         safetySettings: SAFETY_SETTINGS,
         generationConfig: {
           responseMimeType: 'application/json',
