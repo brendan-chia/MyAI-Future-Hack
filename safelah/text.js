@@ -11,6 +11,7 @@ const { logScamIntelligence } = require('./queries');
 const { ai }                = require('./gemini');
 const { z }                 = require('zod');
 
+
 function normalizeFlowResult(raw = {}, fallbackEntities = {}) {
   const safe = { ...raw };
   const allowedRisk = ['HIGH', 'MEDIUM', 'LOW'];
@@ -52,6 +53,7 @@ const scamDetectionFlow = ai.defineFlow(
     inputSchema: z.object({
       text:      z.string(),
       phone:     z.string(),
+      visualContext: z.string().optional(), // base64 image string for future multimodal analysis
     }),
     outputSchema: z.object({
       risk_level:         z.enum(['HIGH', 'MEDIUM', 'LOW']),
@@ -66,7 +68,7 @@ const scamDetectionFlow = ai.defineFlow(
       ccidResult:         z.any().optional(),
     }),
   },
-  async ({ text, phone }) => {
+  async ({ text, phone, visualContext = '' }) => {
 
     // Layer 1 — pre-filter (keyword + entity extraction, free, offline)
     const { phones, accounts, urls } = extractEntities(text);
@@ -82,7 +84,7 @@ const scamDetectionFlow = ai.defineFlow(
     }
 
     // Layer 3 — Gemini AI analysis (only runs if layer 1 is inconclusive)
-    let result = await analyseWithGemini(text);
+    let result = await analyseWithGemini(text, visualContext || '');
 
     if (!result) {
       // Gemini unavailable — fall back to keyword result
@@ -160,4 +162,4 @@ const scamDetectionFlow = ai.defineFlow(
   return result;
 }
 
-module.exports = { analyseText };
+module.exports = { analyseText, scamDetectionFlow };
