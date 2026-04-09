@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "@google-cloud/speech": "^7.3.0"
+    "@genkit-ai/googleai": "^1.28.0",
+    "@google-cloud/speech": "^7.3.0",
+    "genkit": "^1.31.0"
   }
 }
