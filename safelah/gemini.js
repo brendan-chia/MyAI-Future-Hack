@@ -1,6 +1,6 @@
 const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
 const { genkit} = require('genkit');
-const { googleAI } = require('@genkit-ai/googleai');
+const { googleAI } = require('@genkit-ai/google-genai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const ai = genkit({

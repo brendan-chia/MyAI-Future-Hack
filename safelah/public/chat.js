@@ -141,7 +141,8 @@ async function handleSend() {
 
     // Remove thinking, show verdict
     thinkingEl.remove();
-    addVerdict(data.verdict, data.risk_level);
+    addVerdict(getVerdictText(data), data?.risk_level || 'UNKNOWN');
+    addPipelineDetails(data);
   } catch (err) {
     thinkingEl.remove();
     addVerdict(
@@ -265,6 +266,92 @@ function addVerdict(text, riskLevel) {
   const time = document.createElement('span');
   time.className = 'message-time';
   time.textContent = new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
+
+  content.appendChild(bubble);
+  content.appendChild(time);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(content);
+  chatArea.appendChild(wrapper);
+  scrollToBottom();
+}
+
+function getVerdictText(data) {
+  if (data && typeof data.verdict === 'string' && data.verdict.trim()) {
+    return data.verdict;
+  }
+  if (data && typeof data.reason_bm === 'string' && data.reason_bm.trim()) {
+    return `⚠️ Keputusan ringkas:\n${data.reason_bm}`;
+  }
+  if (data && typeof data.reason_en === 'string' && data.reason_en.trim()) {
+    return `⚠️ Quick result:\n${data.reason_en}`;
+  }
+  return 'Maaf, keputusan tidak dapat dipaparkan sekarang. Sila cuba semula.';
+}
+
+function addPipelineDetails(data) {
+  if (!data || typeof data !== 'object') return;
+
+  const lines = [];
+  const indicators = [];
+
+  if (data.flow) {
+    lines.push(`Pipeline: ${data.flow}`);
+  }
+
+  const conf = Number(data.confidence);
+  if (Number.isFinite(conf)) {
+    lines.push(`Confidence: ${Math.round(conf * 100)}%`);
+  }
+
+  if (data.ccid) {
+    if (data.ccid.found) {
+      lines.push(`PDRM Semak Mule: ${data.ccid.reports || 0} laporan sepadan`);
+    } else {
+      lines.push('PDRM Semak Mule: tiada padanan');
+    }
+  }
+
+  if (data.vertex) {
+    if (data.vertex.found) {
+      lines.push(`Vertex AI Search: ${data.vertex.hits || 0} rekod sepadan`);
+    } else {
+      lines.push('Vertex AI Search: tiada padanan');
+    }
+  }
+
+  if (Array.isArray(data.extracted_phones) && data.extracted_phones.length) {
+    indicators.push(`${data.extracted_phones.length} nombor telefon`);
+  }
+  if (Array.isArray(data.extracted_accounts) && data.extracted_accounts.length) {
+    indicators.push(`${data.extracted_accounts.length} akaun bank`);
+  }
+  if (Array.isArray(data.extracted_urls) && data.extracted_urls.length) {
+    indicators.push(`${data.extracted_urls.length} URL`);
+  }
+
+  if (indicators.length) {
+    lines.push(`Indikator dikesan: ${indicators.join(', ')}`);
+  }
+
+  if (!lines.length) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message bot-message pipeline-meta';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message-avatar';
+  avatar.textContent = 'ℹ️';
+
+  const content = document.createElement('div');
+  content.className = 'message-content';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.textContent = lines.join('\n');
+
+  const time = document.createElement('span');
+  time.className = 'message-time';
+  time.textContent = 'Signal summary';
 
   content.appendChild(bubble);
   content.appendChild(time);

@@ -1,5 +1,6 @@
 const { analyseWithGemini }  = require('./gemini');
 const { checkSemakMule }     = require('./semakmule');
+const { searchVertexAI }     = require('./vertexSearch');
 const { scanUrl }            = require('./virustotal');
 const { sendMessage }        = require('./whatsapp');
 const { keywordAnalyse }     = require('./keywordFallback');
@@ -72,6 +73,7 @@ const scamDetectionFlow = ai.defineFlow(
       extracted_urls:     z.array(z.string()),
       source:             z.string().optional(),
       ccidResult:         z.any().optional(),
+      vertexResult:       z.any().optional(),
     }),
   },
   async ({ text, phone, visual_context = '', pre_extracted_phones = [], pre_extracted_accounts = [], pre_extracted_urls = [] }) => {
@@ -106,28 +108,52 @@ const scamDetectionFlow = ai.defineFlow(
 
     result = normalizeFlowResult(result, { phones, accounts, urls });
 
-    // Layer 4 — aggregate signals: CCID Semak Mule + VirusTotal
-    let ccidResult = { found: false, reports: 0 };
+    // Layer 4 — aggregate signals: CCID Semak Mule + Vertex AI Search + VirusTotal
+    let ccidResult   = { found: false, reports: 0 };
+    let vertexResult = { found: false, hits: 0, results: [] };
     const checkTarget = (result.extracted_phones[0] || phones[0]) ||
                         (result.extracted_accounts[0] || accounts[0]);
 
     if (checkTarget) {
       const category = (result.extracted_phones[0] || phones[0]) ? 'phone' : 'bank';
-      ccidResult = await checkSemakMule(checkTarget, category);
+
+      // Run CCID + Vertex AI Search in parallel for speed
+      const [ccid, vertex] = await Promise.all([
+        checkSemakMule(checkTarget, category),
+        searchVertexAI(checkTarget),
+      ]);
+      ccidResult   = ccid;
+      vertexResult = vertex;
+
+      // CCID escalation
       if (ccidResult.found && result.risk_level === 'LOW') result.risk_level = 'MEDIUM';
       if (ccidResult.reports >= 3)                         result.risk_level = 'HIGH';
+
+      // Vertex AI Search escalation
+      if (vertexResult.found && result.risk_level === 'LOW') result.risk_level = 'MEDIUM';
+      if (vertexResult.hits >= 3)                            result.risk_level = 'HIGH';
     }
 
     const urlToScan = result.extracted_urls[0] || urls[0];
     if (urlToScan) {
-      const vtResult = await scanUrl(urlToScan);
+      // Also search Vertex AI for the URL
+      const [vtResult, vtxUrl] = await Promise.all([
+        scanUrl(urlToScan),
+        searchVertexAI(urlToScan),
+      ]);
       if (vtResult?.is_malicious) {
         result.risk_level = 'HIGH';
         result.scam_type  = result.scam_type || 'PHISHING_LINK';
       }
+      // Merge Vertex URL results
+      if (vtxUrl.found && !vertexResult.found) {
+        vertexResult = vtxUrl;
+        if (result.risk_level === 'LOW') result.risk_level = 'MEDIUM';
+      }
     }
 
-    result.ccidResult = ccidResult;
+    result.ccidResult   = ccidResult;
+    result.vertexResult = vertexResult;
     return result;
   }
 );
@@ -141,6 +167,41 @@ async function runScamDetectionFlow({ text, phone, visualContext = '', preExtrac
     pre_extracted_accounts: preExtractedAccounts,
     pre_extracted_urls: preExtractedUrls,
   });
+}
+
+async function analyseTextDirect(sessionId, text, forceLang = null) {
+  const lang = forceLang || detectLanguage(text);
+  const result = await runScamDetectionFlow({
+    text,
+    phone: sessionId || 'web-user',
+  });
+  const ccidResult = result.ccidResult || { found: false, reports: 0 };
+  const vertexResult = result.vertexResult || { found: false, hits: 0, results: [] };
+  const verdict = buildVerdict(result, ccidResult, lang, vertexResult);
+
+  logScamIntelligence({
+    scamType: result.scam_type,
+    riskLevel: result.risk_level,
+    phones: result.extracted_phones || [],
+    accounts: result.extracted_accounts || [],
+    urls: result.extracted_urls || [],
+    confidence: result.confidence || 0,
+  });
+
+  return {
+    verdict,
+    risk_level: result.risk_level,
+    scam_type: result.scam_type,
+    confidence: result.confidence || 0,
+    reason_bm: result.reason_bm,
+    reason_en: result.reason_en,
+    extracted_phones: result.extracted_phones || [],
+    extracted_accounts: result.extracted_accounts || [],
+    extracted_urls: result.extracted_urls || [],
+    ccid: ccidResult,
+    vertex: vertexResult,
+    flow: 'genkit_scamDetectionFlow',
+  };
 }
 
   async function analyseText(from, text, batchMode = false, forceLang = null) {
@@ -182,4 +243,4 @@ async function runScamDetectionFlow({ text, phone, visualContext = '', preExtrac
   return result;
 }
 
-module.exports = { analyseText, runScamDetectionFlow };
+module.exports = { analyseText, analyseTextDirect, runScamDetectionFlow };
