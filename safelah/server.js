@@ -23,8 +23,9 @@ app.post('/api/analyse', async (req, res) => {
     // Use sessionId or default to 'web-user'
     const from = sessionId || 'web-user';
 
-    // Reuse the same analysis function from handleIncoming
-    const result = await require('./text').analyseText(from, text);
+    // Web-safe pipeline: returns full verdict + flow metadata without WhatsApp side effects
+    const { analyseTextDirect } = require('./text');
+    const result = await analyseTextDirect(from, text);
 
     res.json(result);
   } catch (err) {
@@ -34,6 +35,39 @@ app.post('/api/analyse', async (req, res) => {
       verdict: 'Maaf, semakan tidak tersedia sekarang.\n\n❌ Jangan transfer wang kepada orang tidak dikenali\n❌ Jangan klik pautan dalam mesej tidak dikenali\n\nHotline Anti-Scam: 997',
       risk_level: 'UNKNOWN',
     });
+  }
+});
+
+// ── Web UI: Direct Genkit flow API ─────────────────────────────────────────
+app.post('/api/flow', async (req, res) => {
+  try {
+    const { text, sessionId } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'No text provided' });
+    }
+
+    const { runScamDetectionFlow } = require('./text');
+    const result = await runScamDetectionFlow({
+      text: text.trim(),
+      phone: sessionId || 'web-user',
+    });
+
+    res.json({
+      flow: 'genkit_scamDetectionFlow',
+      risk_level: result.risk_level,
+      scam_type: result.scam_type,
+      confidence: result.confidence,
+      reason_bm: result.reason_bm,
+      reason_en: result.reason_en,
+      extracted_phones: result.extracted_phones || [],
+      extracted_accounts: result.extracted_accounts || [],
+      extracted_urls: result.extracted_urls || [],
+      ccid: result.ccidResult || { found: false, reports: 0 },
+      vertex: result.vertexResult || { found: false, hits: 0, results: [] },
+    });
+  } catch (err) {
+    console.error('[flow] error:', err);
+    res.status(500).json({ error: 'Flow execution failed' });
   }
 });
 
@@ -58,6 +92,23 @@ app.post('/api/analyse-image', async (req, res) => {
   }
 });
 
+// ── Web UI: Vertex AI Search API ────────────────────────────────────────────
+app.post('/api/search', async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ error: 'No query provided' });
+    }
+
+    const { searchVertexAI } = require('./vertexSearch');
+    const result = await searchVertexAI(query.trim());
+    res.json(result);
+  } catch (err) {
+    console.error('[search] error:', err);
+    res.status(500).json({ error: 'Search failed', found: false, hits: 0, results: [] });
+  }
+});
+
 // ── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({
@@ -66,6 +117,7 @@ app.get('/health', (req, res) => {
     env: {
       gemini_configured: !!process.env.GEMINI_API_KEY,
       vt_configured: !!process.env.VIRUSTOTAL_API_KEY,
+      vertex_ai_configured: !!process.env.VERTEX_PROJECT_ID && !!process.env.VERTEX_ENGINE_ID,
       whatsapp_web_ready: !!getClient(),
     },
   });
@@ -165,27 +217,35 @@ const PORT = process.env.PORT || 3000;
     // Wait for database to be ready
     await dbReady;
 
-    // Initialize WhatsApp Web
-    console.log('[server] Initializing WhatsApp Web client...');
-    const client = await initializeWhatsApp();
-
-    // Set up message listener
-    client.on('message_create', async (message) => {
-      // Skip outgoing messages (messages sent by the bot)
-      if (message.fromMe) return;
-
-      // Handle incoming message
+    // Initialize WhatsApp Web (skip on Cloud Run / when SKIP_WHATSAPP is set)
+    if (process.env.SKIP_WHATSAPP === 'true') {
+      console.log('[server] SKIP_WHATSAPP=true — running Web UI only (no WhatsApp bot)');
+    } else {
+      console.log('[server] Initializing WhatsApp Web client...');
       try {
-        await handleIncoming(message);
-      } catch (err) {
-        console.error('[message_listener] error:', err);
+        const client = await initializeWhatsApp();
+
+        // Set up message listener
+        client.on('message_create', async (message) => {
+          // Skip outgoing messages (messages sent by the bot)
+          if (message.fromMe) return;
+
+          // Handle incoming message
+          try {
+            await handleIncoming(message);
+          } catch (err) {
+            console.error('[message_listener] error:', err);
+          }
+        });
+        console.log('📱 WhatsApp Bot: Listening for messages...');
+      } catch (whatsappErr) {
+        console.warn('[server] WhatsApp init failed (Web UI still works):', whatsappErr.message);
       }
-    });
+    }
 
     // Start Express server for web UI
     app.listen(PORT, () => {
-      console.log(`\n🛡️  SelamatLah is running at http://localhost:${PORT}`);
-      console.log(`📱 WhatsApp Bot: Listening for messages...`);
+      console.log(`\n🛡️  SafeLah is running at http://localhost:${PORT}`);
       console.log(`🌐 Web UI: http://localhost:${PORT}\n`);
     });
   } catch (err) {

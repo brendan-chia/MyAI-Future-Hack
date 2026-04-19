@@ -172,6 +172,15 @@ async function analyseImageDirect(base64Data, mimeType) {
       verdict: verdictMsg,
       risk_level: result.risk_level,
       scam_type: result.scam_type,
+      confidence: result.confidence || 0,
+      reason_bm: result.reason_bm,
+      reason_en: result.reason_en,
+      extracted_phones: result.extracted_phones || [],
+      extracted_accounts: result.extracted_accounts || [],
+      extracted_urls: result.extracted_urls || [],
+      ccid: ccidResult,
+      vertex: result.vertexResult || { found: false, hits: 0, results: [] },
+      flow: 'genkit_scamDetectionFlow_image_stage2',
     };
   } catch (err) {
     console.error('[image_direct] error:', err);

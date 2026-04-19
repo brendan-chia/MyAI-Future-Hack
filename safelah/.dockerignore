@@ -1,0 +1,10 @@
+node_modules/
+.wwebjs_auth/
+.wwebjs_cache/
+.env
+*.db
+.git/
+.gitignore
+test-*.js
+README.md
+Procfile

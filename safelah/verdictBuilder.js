@@ -25,7 +25,7 @@ const SCAM_LABELS = {
   },
 };
 
-function buildVerdict(analysisResult, ccidResult, lang = 'bm') {
+function buildVerdict(analysisResult, ccidResult, lang = 'bm', vertexResult = null) {
   const { risk_level, scam_type, reason_bm, reason_en } = analysisResult;
   const label    = SCAM_LABELS[lang]?.[scam_type] || SCAM_LABELS[lang]?.UNKNOWN_SCAM || '';
   const ccidNote = ccidResult?.found
@@ -34,9 +34,19 @@ function buildVerdict(analysisResult, ccidResult, lang = 'bm') {
         : `\n\nThis number has ${ccidResult.reports} report(s) in PDRM's Semak Mule database.`)
     : '';
 
+  // Use vertexResult from analysisResult if not passed directly
+  const vtx = vertexResult || analysisResult.vertexResult;
+  const vertexNote = vtx?.found
+    ? (lang === 'bm'
+        ? `\n📊 ${vtx.hits} rekod sepadan ditemui dalam pangkalan data SafeLah.`
+        : `\n📊 ${vtx.hits} matching record(s) found in SafeLah database.`)
+    : '';
+
+  const combinedNote = ccidNote + vertexNote;
+
   switch (risk_level) {
-    case 'HIGH':   return buildHigh(lang, label, reason_bm, reason_en, ccidNote);
-    case 'MEDIUM': return buildMedium(lang, label, reason_bm, reason_en, ccidNote);
+    case 'HIGH':   return buildHigh(lang, label, reason_bm, reason_en, combinedNote);
+    case 'MEDIUM': return buildMedium(lang, label, reason_bm, reason_en, combinedNote);
     default:       return buildLow(lang);
   }
 }

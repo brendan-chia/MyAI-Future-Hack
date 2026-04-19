@@ -312,6 +312,20 @@ body {
   border-left: 3px solid var(--safe);
 }
 
+.pipeline-meta .message-bubble {
+  background: linear-gradient(135deg, #1a2230, #1e2030);
+  border: 1px solid #2f5f9e;
+  border-left: 3px solid #5aa3ff;
+  font-size: 0.82rem;
+  color: #d9e7ff;
+}
+
+.pipeline-meta .message-avatar {
+  background: #1a2230;
+  border-color: #2f5f9e;
+  font-size: 14px;
+}
+
 /* ── Thinking indicator ────────────────────────────────────────────────────── */
 .thinking-dots {
   display: flex;
