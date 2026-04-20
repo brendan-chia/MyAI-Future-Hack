@@ -219,4 +219,41 @@ Provide ONE overall verdict for this conversation as a whole AND identify if thi
   return null; // triggers keyword fallback
 }
 
-module.exports = { ai, analyseWithGemini, analyseImageWithGemini, extractTextFromImage, analyseConversationWithGemini };
+// ── Audio transcription + analysis ──────────────────────────────────────────
+async function analyseAudioWithGemini(base64Audio, mimeType = 'audio/ogg', retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-3.1-flash-lite-preview',
+        safetySettings: SAFETY_SETTINGS,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: EXTRACTION_SCHEMA, // reuse same schema as image extraction
+          maxOutputTokens: 1000,
+          temperature: 0.1,
+        },
+      });
+
+      const result = await model.generateContent([
+        { inlineData: { mimeType, data: base64Audio } },
+        `You are an audio transcription specialist. Listen to this audio and:
+1. Transcribe ALL spoken words verbatim into extracted_text
+2. Extract any phone numbers mentioned into phones array
+3. Extract any bank account numbers mentioned into accounts array  
+4. Extract any URLs or websites mentioned into urls array
+5. Describe audio cues in visual_cues: tone of voice (urgent/threatening/friendly), 
+   background sounds, if caller claims to be authority (PDRM/bank/government)`,
+      ]);
+
+      const parsed = JSON.parse(result.response.text());
+      console.log(`[gemini audio] transcribed ${parsed.extracted_text?.length || 0} chars`);
+      return parsed;
+    } catch (err) {
+      console.error(`[gemini audio] attempt ${i + 1} failed:`, err.message);
+      if (i < retries) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  return null;
+}
+
+module.exports = { ai, analyseWithGemini, analyseImageWithGemini, extractTextFromImage, analyseConversationWithGemini, analyseAudioWithGemini };
