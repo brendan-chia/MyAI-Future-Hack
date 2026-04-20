@@ -1,124 +1,179 @@
-# Safelah 🌏
+# SafeLah: AI Scam Detection Web UI
 
-A collection of digital tools and services for ASEAN youth communities.
+SafeLah is an AI-powered Web UI that helps Malaysian users detect scam messages quickly.
 
-## Projects
+It combines Gemini analysis, PDRM Semak Mule checks, Vertex AI Search enrichment, and URL threat scanning to produce clear, bilingual scam verdicts.
 
-### SelamatLah 🛡️
-**AI-powered WhatsApp scam detection bot for Malaysian users**
+## Live Deployment
 
-An intelligent bot that analyzes suspicious messages in real-time using Google Gemini AI, cross-references PDRM's Semak Mule database, and alerts family guardians when elderly users encounter high-risk messages.
+- Cloud Run URL: https://safelah-231817059352.asia-southeast1.run.app
 
-**Directory:** `safelah/`
+## Development Note
 
-#### Quick Start
+- Developed using Antigravity.
+
+## Repository Overview
+
+This repository has two main parts:
+
+- `safelah/`: Main product (Web UI + API + analysis pipeline)
+- `scrape/`: Supporting data collection artifacts and scripts
+
+## What SafeLah Does
+
+- Detects scam risk from text, screenshots, audio, and batch conversations
+- Classifies likely scam type (Macau, phishing, job scam, investment scam, etc.)
+- Extracts phone numbers, bank accounts, and URLs from user input
+- Cross-checks indicators against:
+  - PDRM Semak Mule
+  - Vertex AI Search knowledge base
+  - VirusTotal URL reputation
+- Escalates risk level when external signals confirm suspicious indicators
+- Sends verdicts in English/Bahasa Melayu
+- Supports family/guardian alerts for risky cases
+
+## Core Architecture
+
+1. Input enters the Web UI/API (`/api/analyse`, `/api/analyse-image`, `/api/analyse-audio`, `/api/analyse-batch`, `/api/flow`)
+2. Pre-processing extracts entities and applies keyword fallback for fast high-risk short-circuiting
+3. Gemini model performs semantic scam analysis when needed
+4. Enrichment layer runs CCID + Vertex AI Search (+ VirusTotal for URLs)
+5. Verdict builder composes final bilingual user-safe response
+6. Optional guardian alert is triggered for high-risk findings
+
+## Genkit Flow (How It Works)
+
+SafeLah uses a Genkit flow named `scamDetectionFlow` to coordinate the text analysis pipeline.
+
+Flow stages:
+
+1. **Layer 1: Offline pre-filter**
+	- Entity extraction (`phones`, `accounts`, `urls`)
+	- Keyword-based risk pre-check
+
+2. **Layer 2: Fast short-circuit**
+	- If keyword fallback confidently flags `HIGH`, return immediately
+
+3. **Layer 3: Gemini reasoning**
+	- Uses Gemini with structured JSON schema output
+	- Returns risk level, scam type, confidence, reasons, and extracted indicators
+
+4. **Layer 4: Signal aggregation**
+	- Queries PDRM Semak Mule and Vertex AI Search in parallel for speed
+	- Scans URL with VirusTotal when a link exists
+	- Escalates risk level when corroborating evidence is found
+
+This flow is exposed directly through `POST /api/flow` and is reused by standard analysis routes.
+
+## Vertex AI Search Usage
+
+SafeLah integrates Vertex AI Search through Discovery Engine (`@google-cloud/discoveryengine`) as an enrichment source.
+
+- The app queries Vertex AI Search for phone numbers, bank accounts, and URLs.
+- Search config is built from:
+  - `VERTEX_PROJECT_ID`
+  - `VERTEX_LOCATION`
+  - `VERTEX_ENGINE_ID` (preferred)
+  - `VERTEX_DATASTORE_ID` (fallback path)
+- Results are normalized into:
+  - `found`
+  - `hits`
+  - `results`
+- A lightweight in-memory cache reduces repeated lookups.
+- If Vertex is unavailable, the system degrades gracefully without crashing.
+
+Risk escalation logic example:
+
+- If Vertex finds matching scam records and current risk is `LOW`, promote to `MEDIUM`.
+- If Vertex returns high hit counts (for example, `>= 3`), promote to `HIGH`.
+
+There is also a dedicated API endpoint:
+
+- `POST /api/search` for manual/query-based Vertex lookup.
+
+## Quick Start (Local)
 
 ```bash
 cd safelah
 npm install
-cp .env.example .env
-# Add your GEMINI_API_KEY to .env
-npm start
+copy .env.example .env
 ```
 
-The bot will display a QR code — scan it with your WhatsApp account to authenticate. Once scanned, it will automatically receive and analyze messages.
-
-#### Key Features
-
-- **Real-time Analysis**: Analyzes text messages and screenshots using Gemini AI Vision
-- **Scam Detection**: Identifies phishing, lottery scams, macau scams, and more
-- **Database Cross-Reference**: Checks against PDRM's CCID Semak Mule database
-- **URL Scanning**: Integrates with VirusTotal to detect malicious links
-- **Family Protection**: Alerts guardians when elderly users receive high-risk messages
-- **Multi-Language**: Supports Bahasa Melayu, English, Mandarin, and Tamil
-- **Offline Fallback**: Keyword-based detection when AI is unavailable
-
-#### Technology Stack
-
-- **WhatsApp Integration**: whatsapp-web.js with QR code authentication
-- **AI Analysis**: Google Gemini 2.0 Flash (text + vision)
-- **Database**: SQLite (sql.js)
-- **Server**: Express.js for web UI
-- **Browser Automation**: Puppeteer (built into whatsapp-web.js)
-
-#### API Endpoints
-
-- `POST /api/analyse` — Analyze text for scams (web UI)
-- `POST /api/analyse-image` — Analyze screenshots (web UI)
-- `GET /health` — Health check
-
-#### Environment Variables
+Set required variables in `.env`:
 
 ```bash
-GEMINI_API_KEY=your_google_gemini_api_key
-VIRUSTOTAL_API_KEY=optional_virustotal_key
+GEMINI_API_KEY=your_gemini_key
+VIRUSTOTAL_API_KEY=optional
+VERTEX_PROJECT_ID=your_gcp_project
+VERTEX_LOCATION=global
+VERTEX_ENGINE_ID=your_vertex_engine
+VERTEX_DATASTORE_ID=optional_fallback_datastore
 PORT=3000
 DB_PATH=./selamatlah.db
 ```
 
-#### Testing
+Run:
 
-Send these messages to your bot:
-
-| Message | Expected Response |
-|---------|------------------|
-| Any message | Onboarding welcome (first time) |
-| `Tahniah! Anda menang RM5000!` | 🔴 HIGH RISK — Lucky Draw |
-| `Ini PDRM, akaun dibekukan` | 🔴 HIGH RISK — Macau Scam |
-| `Jom makan nasi lemak` | ✅ LOW RISK — Safe |
-| `/bantuan` | Help menu |
-| `/daftar` | Register as guardian |
-| Screenshot of scam | 🔴 HIGH RISK (AI Vision) |
-
-#### Project Structure
-
-```
-safelah/
-├── server.js              # Express server + WhatsApp event listener
-├── whatsapp.js            # WhatsApp Web.js client setup
-├── message.js             # Message routing & deduplication
-├── text.js                # Text analysis pipeline
-├── image.js               # Image/screenshot analysis
-├── commands.js            # /bantuan /daftar /jaga handlers
-├── guardian.js            # Guardian alert system
-├── gemini.js              # Gemini API wrapper
-├── semakmule.js           # CCID Semak Mule scraper
-├── virustotal.js          # URL scanner
-├── extractor.js           # Phone/account/URL extraction
-├── language.js            # Language detection
-├── verdictBuilder.js      # Multilingual verdict messages
-├── keywordFallback.js     # Offline pattern matching
-├── queries.js             # Database helpers
-├── connection.js          # SQLite initialization
-├── public/                # Web UI
-│   ├── index.html
-│   ├── chat.js
-│   └── style.css
-├── .env.example           # Environment template
-├── .gitignore
-├── Procfile              # Deployment config
-└── package.json
-```
-
-#### Troubleshooting
-
-**"Browser already running" error:**
 ```bash
-taskkill /F /IM node.exe
-taskkill /F /IM chrome.exe
-rmdir /S /Q ".wwebjs_auth"
+npm run dev
+# or
 npm start
 ```
 
-**API quota exceeded:**
-- Free tier is limited. Upgrade your Gemini API plan or wait for quota reset.
+## Main API Endpoints
 
-**Messages not being received:**
-- Ensure QR code was properly scanned
-- Check WhatsApp app is installed on phone
-- Verify WhatsApp Web isn't open elsewhere
+- `POST /api/analyse` - Analyze text
+- `POST /api/analyse-image` - Analyze screenshot/image
+- `POST /api/analyse-audio` - Analyze audio/voice input
+- `POST /api/analyse-batch` - Analyze multi-message conversation
+- `POST /api/flow` - Direct Genkit flow execution
+- `POST /api/search` - Vertex AI Search query
+- `GET /health` - Service and integration status
 
----
+## High-Level Project Structure
+
+```text
+.
+├── README.md
+├── TEST_CONVERSATIONS.md
+├── safelah/
+│   ├── server.js
+│   ├── text.js
+│   ├── gemini.js
+│   ├── vertexSearch.js
+│   ├── semakmule.js
+│   ├── virustotal.js
+│   ├── sessionManager.js
+│   ├── guardian.js
+│   ├── connection.js
+│   ├── queries.js
+│   ├── public/
+│   └── package.json
+└── scrape/
+	 ├── scrape.py
+	 ├── scam_phones.jsonl
+	 └── scam_bank_accounts.jsonl
+```
+
+## Tech Stack
+
+- Node.js + Express Web server
+- Genkit flow orchestration
+- Google Gemini models
+- Vertex AI Search (Discovery Engine)
+- SQLite (`sql.js`) for local app data
+- VirusTotal URL scanning
+- Web frontend in `safelah/public/`
+
+## Safety and Reliability
+
+- Fallback keyword model keeps detection available if AI call fails
+- External services are optional and fail-soft
+- Guardrail-oriented verdict wording for non-technical users
+- Health endpoint exposes integration readiness (Gemini, Vertex, VirusTotal, WhatsApp)
+
+
+
 
 
 
