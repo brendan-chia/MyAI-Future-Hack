@@ -12,7 +12,8 @@ const { inferSenderType } = require('./messageExtractor');
  * Analyzes all messages collected in batch mode using sequential context reasoning
  * Now includes sender detection for better conversation understanding
  */
-async function analyzeBatchMessages(phone, lang = 'bm') {
+async function analyzeBatchMessages(phone, lang = 'en') {
+  lang = 'en';
   const messages = getBatchMessages(phone);
   
   const errorMsgs = {
@@ -274,17 +275,17 @@ async function askClarificationQuestions(phone, messages, results, indices) {
 
   const questions = generateQuestions(result.scam_type, msg.text);
 
-  let promptText = `⚠️ Untuk analisis yang lebih tepat, tolong jawab soalan ini untuk mesej pertama yang ragu:\n\n`;
-  promptText += `**Mesej:** "${msg.text.substring(0, 100)}${msg.text.length > 100 ? '...' : ''}"\n\n`;
+  let promptText = `⚠️ For a more accurate analysis, please answer these questions for the first suspicious message:\n\n`;
+  promptText += `**Message:** "${msg.text.substring(0, 100)}${msg.text.length > 100 ? '...' : ''}"\n\n`;
 
   questions.forEach((q, idx) => {
     promptText += `${idx + 1}. ${q.question}\n`;
   });
 
-  promptText += `\nJawab dengan:\n`;
-  promptText += `• Ya / Tidak / Tidak Pasti\n`;
-  promptText += `• atau hantar /skip untuk langkau\n`;
-  promptText += `• atau hantar /cancel untuk batalkan analisis\n`;
+  promptText += `\nReply with:\n`;
+  promptText += `• Yes / No / Not Sure\n`;
+  promptText += `• or send /skip to skip\n`;
+  promptText += `• or send /cancel to cancel the analysis\n`;
 
   await sendMessage(phone, promptText);
 
@@ -309,58 +310,58 @@ function generateQuestions(scamType, messageText) {
 
   if (!scamType || scamType === 'UNKNOWN_SCAM') {
     return [
-      { id: 'ownership', question: 'Adakah anda kenal pengirim mesej ini?' },
-      { id: 'requested', question: 'Adakah anda meminta bantuan atau perkhidmatan ini?' },
+      { id: 'ownership', question: 'Do you know the sender of this message?' },
+      { id: 'requested', question: 'Did you request this help or service?' },
     ];
   }
 
   switch (scamType) {
     case 'INVESTMENT_SCAM':
       questions.push(
-        { id: 'signup', question: 'Adakah anda mendaftar di platform/kumpulan ini?' },
-        { id: 'guaranteed', question: 'Adakah jaminan pulangan tinggi membuatkan anda ragu-ragu?' }
+        { id: 'signup', question: 'Did you sign up on this platform/group?' },
+        { id: 'guaranteed', question: 'Does the promise of high returns make you suspicious?' }
       );
       break;
 
     case 'LOVE_SCAM':
       questions.push(
-        { id: 'known', question: 'Adakah anda kenal orang ini dalam kehidupan sebenar?' },
-        { id: 'asked_money', question: 'Adakah mereka pernah minta wang atau maklumat peribadi?' }
+        { id: 'known', question: 'Do you know this person in real life?' },
+        { id: 'asked_money', question: 'Have they asked for money or personal information before?' }
       );
       break;
 
     case 'JOB_SCAM':
       questions.push(
-        { id: 'applied', question: 'Adakah anda benar-benar memohon kerja ini?' },
-        { id: 'upfront', question: 'Adakah mereka minta wang pendahuluan atau maklumat bank?' }
+        { id: 'applied', question: 'Did you actually apply for this job?' },
+        { id: 'upfront', question: 'Are they asking for upfront money or bank details?' }
       );
       break;
 
     case 'LOAN_SCAM':
       questions.push(
-        { id: 'applied', question: 'Adakah anda memohon pinjaman kepada institusi ini?' },
-        { id: 'upfront', question: 'Adakah mereka minta bayaran pendahuluan sebelum pinjaman diluluskan?' }
+        { id: 'applied', question: 'Did you apply for a loan with this institution?' },
+        { id: 'upfront', question: 'Are they asking for payment before the loan is approved?' }
       );
       break;
 
     case 'PARCEL_SCAM':
       questions.push(
-        { id: 'expected', question: 'Adakah anda memang menunggu parsel?' },
-        { id: 'know_shipper', question: 'Adakah anda tahu siapa pengirim sebenar?' }
+        { id: 'expected', question: 'Were you expecting a parcel?' },
+        { id: 'know_shipper', question: 'Do you know who the real sender is?' }
       );
       break;
 
     case 'MACAU_SCAM':
       questions.push(
-        { id: 'official', question: 'Adakah anda hubungi agensi ini secara rasmi sebelum ini?' },
-        { id: 'likely_scam', question: 'Adakah anda merasa ini adalah penipuan sebenarnya?' }
+        { id: 'official', question: 'Have you contacted this agency officially before?' },
+        { id: 'likely_scam', question: 'Do you feel this is actually a scam?' }
       );
       break;
 
     default:
       questions.push(
-        { id: 'ownership', question: 'Adakah anda kenal pengirim mesej ini?' },
-        { id: 'suspicious', question: 'Adakah anda merasa mesej ini mencurigakan?' }
+        { id: 'ownership', question: 'Do you know the sender of this message?' },
+        { id: 'suspicious', question: 'Does this message feel suspicious to you?' }
       );
   }
 
@@ -373,7 +374,7 @@ function generateQuestions(scamType, messageText) {
 async function processClarificationAnswer(phone, answerText) {
   const state = global.pendingClarification?.[phone];
   if (!state) {
-    await sendMessage(phone, '❌ Tiada soalan menunggu jawapan. Hantar /start untuk mula analisis baru.');
+    await sendMessage(phone, '❌ No questions are waiting for answers. Send /start to begin a new analysis.');
     return;
   }
 
@@ -457,7 +458,7 @@ function parseAnswer(text) {
  * Send all batch verdicts (or individual ones accumulated)
  */
 async function sendBatchVerdicts(phone, messages, results) {
-  let summaryText = `✅ Analisis selesai untuk ${messages.length} mesej:\n\n`;
+  let summaryText = `✅ Analysis complete for ${messages.length} messages:\n\n`;
   let highRiskCount = 0;
   let mediumRiskCount = 0;
   let lowRiskCount = 0;
@@ -468,7 +469,7 @@ async function sendBatchVerdicts(phone, messages, results) {
     const msg = messages[i];
 
     if (result.error) {
-      summaryText += `${i + 1}. ❌ Gagal menganalisis\n`;
+      summaryText += `${i + 1}. ❌ Failed to analyze\n`;
       continue;
     }
 
@@ -498,13 +499,13 @@ async function sendBatchVerdicts(phone, messages, results) {
   // Check if multiple related messages detected
   const campaignMessages = results.filter(r => r?.isPartOfCampaign);
   if (campaignMessages.length > 1) {
-    campaignWarning = `\n\n⚠️ PENTING: Dikesan ${campaignMessages.length} mesej berkaitan dari kemungkinan kampanye penipuan yang sama!\nIni menunjukkan pola penipuan yang terkoordinasi. Sila hati-hati! 🚨`;
+    campaignWarning = `\n\n⚠️ IMPORTANT: Detected ${campaignMessages.length} related messages from a likely coordinated scam campaign!\nThis suggests a coordinated scam pattern. Please be careful! 🚨`;
   }
 
-  summaryText += `\n📊 Ringkasan:\n`;
-  summaryText += `🔴 Tinggi: ${highRiskCount}\n`;
-  summaryText += `⚠️ Sederhana: ${mediumRiskCount}\n`;
-  summaryText += `🟢 Rendah: ${lowRiskCount}\n`;
+  summaryText += `\n📊 Summary:\n`;
+  summaryText += `🔴 High: ${highRiskCount}\n`;
+  summaryText += `⚠️ Medium: ${mediumRiskCount}\n`;
+  summaryText += `🟢 Low: ${lowRiskCount}\n`;
   summaryText += campaignWarning;
 
   await sendMessage(phone, summaryText);
@@ -513,10 +514,10 @@ async function sendBatchVerdicts(phone, messages, results) {
   for (let i = 0; i < results.length; i++) {
     if (!results[i].error && results[i].risk_level !== 'LOW') {
       const ccidResult = results[i].ccidResult || { found: false, reports: 0 };
-      let verdict = buildVerdict(results[i], ccidResult, 'bm');
+      let verdict = buildVerdict(results[i], ccidResult, 'en');
       
       if (results[i].isPartOfCampaign) {
-        verdict += `\n\n🎯 [KAMPANYE TERKOORDINASI] Mesej ini adalah sebahagian daripada kampanye penipuan yang melibatkan mesej lain yang anda hantar.`;
+        verdict += `\n\n🎯 [COORDINATED CAMPAIGN] This message is part of a scam campaign involving other messages you sent.`;
       }
 
       await sendMessage(phone, `\n📌 Mesej ${i + 1}:\n${verdict}`);
@@ -534,7 +535,8 @@ async function sendBatchVerdicts(phone, messages, results) {
 /**
  * Generate questions for conversation-level analysis
  */
-function generateConversationQuestions(scamType, lang = 'bm') {
+function generateConversationQuestions(scamType, lang = 'en') {
+  lang = 'en';
   const questions = [];
 
   if (!scamType || scamType === 'UNKNOWN_SCAM') {
@@ -680,7 +682,8 @@ function generateConversationQuestions(scamType, lang = 'bm') {
 /**
  * Ask clarification questions for conversation-level analysis
  */
-async function askClarificationQuestionsForConversation(phone, messages, result, lang = 'bm') {
+async function askClarificationQuestionsForConversation(phone, messages, result, lang = 'en') {
+  lang = 'en';
   const enrichedMessages = result.enrichedMessages || messages;
   const questions = generateConversationQuestions(result.scam_type, lang);
 
@@ -747,7 +750,8 @@ async function askClarificationQuestionsForConversation(phone, messages, result,
 /**
  * Send verdict for entire conversation
  */
-async function sendConversationVerdict(phone, messages, result, enrichedMessages = null, lang = 'bm') {
+async function sendConversationVerdict(phone, messages, result, enrichedMessages = null, lang = 'en') {
+  lang = 'en';
   const audioCount = messages.filter(m => m.type === 'audio').length;
   const imageCount = messages.filter(m => m.type === 'image').length;
   const textCount = messages.filter(m => m.type === 'text').length;
@@ -837,25 +841,25 @@ async function sendConversationVerdict(phone, messages, result, enrichedMessages
  */
 async function processClarificationAnswerForConversation(phone, answerText) {
   const state = global.pendingClarification?.[phone];
-  const lang = state?.lang || 'bm';
+  const lang = 'en';
 
   const noQuestionMsgs = {
-    bm: '❌ Tiada soalan menunggu jawapan. Hantar /start untuk mula analisis baru.',
+    bm: '❌ No questions are waiting for answers. Send /start to begin a new analysis.',
     en: '❌ No questions waiting for answers. Send /begin to start a new analysis.',
   };
 
   const skipMsgs = {
-    bm: '⏭️ Soalan dilangkau. Menganalisis dengan maklumat sedia ada...',
+    bm: '⏭️ Question skipped. Analyzing with available information...',
     en: '⏭️ Question skipped. Analyzing with available information...',
   };
 
   const cancelMsgs = {
-    bm: '✅ Analisis dibatalkan. Hantar /start untuk analisis baru.',
+    bm: '✅ Analysis cancelled. Send /begin to start a new analysis.',
     en: '✅ Analysis cancelled. Send /begin to start a new analysis.',
   };
 
   const invalidAnswerMsgs = {
-    bm: '❓ Sila jawab dengan: Ya, Tidak, atau Tidak Pasti',
+    bm: '❓ Please answer with: Yes, No, or Not Sure',
     en: '❓ Please answer with: Yes, No, or Not Sure',
   };
 

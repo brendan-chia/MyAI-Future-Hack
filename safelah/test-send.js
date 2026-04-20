@@ -19,7 +19,7 @@ async function run() {
     console.log(`\nSending test message to ${to}...`);
 
     await sendMessage(to,
-      `✅ SelamatLah test berjaya!\n\n` +
+      `✅ SafeLah test berjaya!\n\n` +
       `Bot anda berfungsi dengan baik. 🛡️\n\n` +
       `Hantar sebarang mesej syak untuk disemak.`
     );

@@ -2,7 +2,7 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const dbPath = process.env.DB_PATH || './selamatlah.db';
+const dbPath = process.env.DB_PATH || './safelah.db';
 let db = null;
 
 // sql.js is async to initialize — this promise resolves when DB is ready
@@ -98,6 +98,35 @@ const dbReady = (async () => {
       question        TEXT NOT NULL,
       user_answer     TEXT,
       created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // ── Web accounts (web UI guardian/elderly login — separate from WhatsApp users) ──
+  db.run(`
+    CREATE TABLE IF NOT EXISTS web_accounts (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      role           TEXT NOT NULL,        -- 'guardian' or 'elderly'
+      username       TEXT UNIQUE NOT NULL,
+      password       TEXT NOT NULL,        -- bcrypt hash
+      phone          TEXT,                 -- optional contact number
+      guardian_code  TEXT,                 -- 6-digit code issued to guardians
+      guardian_id    INTEGER,              -- elderly links to guardian web_accounts.id
+      created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // ── Family alerts (scam alerts pushed to guardian when elderly detects danger) ──
+  db.run(`
+    CREATE TABLE IF NOT EXISTS family_alerts (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      guardian_id  INTEGER NOT NULL,
+      elderly_id   INTEGER NOT NULL,
+      elderly_name TEXT,
+      risk_level   TEXT,
+      scam_type    TEXT,
+      snippet      TEXT,
+      is_read      INTEGER DEFAULT 0,
+      created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 

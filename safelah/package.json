@@ -1,5 +1,5 @@
 {
-  "name": "selamatlah",
+  "name": "safelah",
   "version": "2.0.0",
   "description": "AI scam detection chatbot for Malaysian users",
   "main": "server.js",
@@ -14,9 +14,11 @@
     "@google/generative-ai": "^0.21.0",
     "axios": "^1.7.0",
     "axios-cookiejar-support": "^4.0.7",
+    "bcryptjs": "^3.0.3",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.5",
     "express": "^4.18.3",
+    "express-session": "^1.19.0",
     "ffmpeg-static": "^5.3.0",
     "genkit": "^1.32.0",
     "npm": "^11.11.1",

@@ -180,7 +180,7 @@ function getSession(phone) {
   return session;
 }
 
-function startBatchSession(phone, lang = 'bm') {
+function startBatchSession(phone, lang = 'en') {
   run(
     `INSERT OR REPLACE INTO user_sessions (phone, session_state, batch_messages, language, created_at, updated_at) 
      VALUES (?, 'batch_collection', '[]', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,

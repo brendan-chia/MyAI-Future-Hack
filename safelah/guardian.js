@@ -30,12 +30,12 @@ async function notifyGuardians(elderlyPhone, scamType) {
     }
 
     const msg =
-      `🔴 Amaran Penjaga SelamatLah\n\n` +
-      `Ahli keluarga anda baru sahaja menyemak mesej berisiko TINGGI.\n\n` +
-      `Jenis penipuan: ${scamLabel}\n` +
-      `Masa: ${time}\n\n` +
-      `Sila hubungi mereka sekarang untuk pastikan mereka selamat.\n\n` +
-      `(SelamatLah telah amaran mereka supaya tidak transfer wang atau klik pautan.)`;
+      `🔴 SafeLah Guardian Alert\n\n` +
+      `Your family member just checked a HIGH-risk message.\n\n` +
+      `Scam type: ${scamLabel}\n` +
+      `Time: ${time}\n\n` +
+      `Please contact them now to make sure they are safe.\n\n` +
+      `(SafeLah has already warned them not to transfer money or click links.)`;
 
     await sendMessage(guardian_phone, msg);
     markAlertSent(alertKey);

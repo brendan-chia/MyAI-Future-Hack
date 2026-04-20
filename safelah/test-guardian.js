@@ -7,7 +7,7 @@ const { createRegistrationCode, redeemCode, linkGuardian, getGuardians, getGuard
 const crypto = require('crypto');
 
 function run() {
-  console.log('=== SelamatLah — Guardian Flow Test ===\n');
+  console.log('=== SafeLah — Guardian Flow Test ===\n');
 
   const elderlyPhone  = '60123000001';
   const guardianPhone = '60123000002';

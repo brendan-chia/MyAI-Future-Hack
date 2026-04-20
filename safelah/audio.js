@@ -14,7 +14,7 @@ async function analyseAudio(from, message) {
     const mediaResult = await downloadMedia(message);
     if (!mediaResult) {
       await sendMessage(from,
-        'Maaf, tidak dapat memuat turun audio ini. Sila cuba lagi atau hantarkan teks mesej tersebut. 🙏'
+        'Sorry, could not download this audio. Please try again or send the text message instead. 🙏'
       );
       return;
     }
@@ -29,7 +29,7 @@ async function analyseAudio(from, message) {
 
     if (!extraction || !extraction.extracted_text) {
       await sendMessage(from,
-        'Maaf, tidak dapat mentranskrip audio ini.\n\nSila hantarkan teks mesej tersebut untuk semakan. 🙏'
+        'Sorry, could not transcribe this audio.\n\nPlease send the text message instead for review. 🙏'
       );
       return;
     }
@@ -77,7 +77,7 @@ async function analyseAudio(from, message) {
   } catch (err) {
     console.error('[audio] handler error:', err.message);
     await sendMessage(from,
-      'Maaf, tidak dapat memproses audio ini. Sila cuba lagi atau hantar teks mesej tersebut.'
+      'Sorry, could not process this audio. Please try again or send the text message instead.'
     );
   }
 }
