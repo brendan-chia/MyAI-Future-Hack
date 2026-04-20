@@ -143,6 +143,51 @@ body {
   font-weight: 500;
 }
 
+/* ── User badge ─────────────────────────────────────────────────────────────── */
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: rgba(27,110,245,0.12);
+  border: 1px solid rgba(27,110,245,0.25);
+  border-radius: 20px;
+  margin-left: 8px;
+  cursor: default;
+}
+.user-badge-icon { font-size: 0.9rem; }
+.user-badge-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Logout button ──────────────────────────────────────────────────────────── */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(229,57,53,0.10);
+  border: 1px solid rgba(229,57,53,0.25);
+  color: #e57373;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  margin-left: 4px;
+}
+.logout-btn:hover {
+  background: rgba(229,57,53,0.22);
+  border-color: rgba(229,57,53,0.5);
+  color: #ef5350;
+}
+
 /* ── Chat area ─────────────────────────────────────────────────────────────── */
 .chat-area {
   flex: 1;
@@ -535,4 +580,157 @@ textarea::placeholder { color: var(--text-muted); }
 @media (max-width: 480px) {
   .message { max-width: 92%; }
   .message-bubble { font-size: 0.87rem; padding: 10px 14px; }
+}
+
+/* ── Analyzed conversation transcript ──────────────────────────────────────── */
+.analyzed-convo-msg {
+  max-width: 95%;
+}
+
+.analyzed-convo-msg .message-avatar {
+  background: #1a2a1a;
+  border-color: #2a4a2a;
+}
+
+.analyzed-convo-bubble {
+  background: linear-gradient(135deg, #161e16, #1e2030) !important;
+  border: 1px solid #2a4a2a !important;
+  border-left: 3px solid #00c853 !important;
+  padding: 12px 14px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.analyzed-convo-header {
+  font-size: 0.82rem;
+  color: #00c853;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(0,200,83,0.2);
+  letter-spacing: 0.2px;
+}
+
+.analyzed-convo-item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(42,74,42,0.4);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.analyzed-convo-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.analyzed-convo-label {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6dd986;
+  min-width: 56px;
+  padding-top: 1px;
+}
+
+.analyzed-convo-text {
+  color: #c8dac8;
+  word-break: break-word;
+  font-size: 0.84rem;
+}
+
+/* PIN bubble */
+.pin-bubble {
+  text-align: center;
+  padding: 18px 24px !important;
+}
+
+.pin-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.pin-digits {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 10px;
+  color: var(--primary);
+  font-family: 'Courier New', monospace;
+  margin-bottom: 14px;
+}
+
+.pin-copy-btn {
+  padding: 8px 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.pin-copy-btn:hover {
+  background: var(--primary-dark);
+  transform: scale(1.03);
+}
+
+/* Guardian alert bubble */
+.alert-bubble .message-bubble {
+  background: linear-gradient(135deg, #2d1215, #1e2030) !important;
+  border: 1px solid var(--danger) !important;
+  border-left: 3px solid var(--danger) !important;
+}
+
+/* Password overlay */
+.pwd-overlay {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-chat);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 3px rgba(27,110,245,0.2);
+}
+
+.pwd-overlay input[type="password"] {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 8px 4px;
+}
+
+.pwd-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  border: none;
+  cursor: pointer;
+  color: white;
+  transition: background 0.2s;
+}
+
+.pwd-send-btn:hover { background: var(--primary-dark); }
+
+/* Command message */
+.cmd-message .message-bubble {
+  background: rgba(27,110,245,0.08);
+  border: 1px solid rgba(27,110,245,0.2);
+  color: #90baff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
 }

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SelamatLah — Log Masuk</title>
+  <meta name="description" content="Log masuk atau daftar ke SelamatLah — pembantu semakan penipuan untuk keluarga Malaysia.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+
+  <!-- Animated background blobs -->
+  <div class="bg-blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div class="auth-wrapper">
+
+    <!-- Logo -->
+    <div class="brand" role="banner">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-text">
+        <h1>SelamatLah</h1>
+        <span>Scam Detection Assistant</span>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="card" role="main">
+
+      <!-- Top-level tabs: Login / Register -->
+      <div class="tab-row" role="tablist" aria-label="Login or Register">
+        <button class="tab active" id="tab-login" role="tab" aria-selected="true"  aria-controls="panel-login"    onclick="switchTab('login')">Log Masuk</button>
+        <button class="tab"        id="tab-register" role="tab" aria-selected="false" aria-controls="panel-register" onclick="switchTab('register')">Daftar</button>
+      </div>
+
+      <!-- ── LOGIN PANEL ─────────────────────────────────────────────────────── -->
+      <div id="panel-login" class="panel" role="tabpanel" aria-labelledby="tab-login">
+        <form id="loginForm" autocomplete="on" novalidate>
+          <div class="field">
+            <label for="loginUsername">Nama Pengguna</label>
+            <input type="text" id="loginUsername" name="username" placeholder="nama_pengguna" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="loginPassword">Kata Laluan</label>
+            <div class="password-wrap">
+              <input type="password" id="loginPassword" name="password" placeholder="••••••••" autocomplete="current-password" required>
+              <button type="button" class="eye-btn" aria-label="Tunjuk kata laluan" onclick="togglePw('loginPassword', this)">👁</button>
+            </div>
+          </div>
+          <div class="error-msg" id="loginError" role="alert" aria-live="polite"></div>
+          <button type="submit" class="btn-primary" id="loginBtn">Log Masuk</button>
+        </form>
+      </div>
+
+      <!-- ── REGISTER PANEL ──────────────────────────────────────────────────── -->
+      <div id="panel-register" class="panel hidden" role="tabpanel" aria-labelledby="tab-register">
+
+        <!-- Role sub-tabs -->
+        <div class="role-tabs" role="tablist" aria-label="Choose your role">
+          <button class="role-tab active" id="rtab-guardian" role="tab" aria-selected="true"  aria-controls="rp-guardian" onclick="switchRole('guardian')">
+            👨‍👩‍👧 Penjaga
+          </button>
+          <button class="role-tab"        id="rtab-elderly"  role="tab" aria-selected="false" aria-controls="rp-elderly"  onclick="switchRole('elderly')">
+            👴 Warga Emas
+          </button>
+        </div>
+
+        <!-- Guardian register -->
+        <div id="rp-guardian" class="role-panel">
+          <p class="role-hint">Daftar sebagai <strong>Penjaga</strong>. Anda akan menerima kod 6-digit untuk dikongsi dengan warga emas anda.</p>
+          <form id="guardianForm" autocomplete="on" novalidate>
+            <div class="field">
+              <label for="gUsername">Nama Pengguna</label>
+              <input type="text" id="gUsername" name="username" placeholder="nama_pengguna" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="gPhone">Nombor WhatsApp <span class="optional">(pilihan)</span></label>
+              <input type="tel" id="gPhone" name="phone" placeholder="+601X-XXXXXXX" autocomplete="tel">
+            </div>
+            <div class="field">
+              <label for="gPassword">Kata Laluan</label>
+              <div class="password-wrap">
+                <input type="password" id="gPassword" name="password" placeholder="Min 8 aksara" autocomplete="new-password" required>
+                <button type="button" class="eye-btn" aria-label="Tunjuk kata laluan" onclick="togglePw('gPassword', this)">👁</button>
+              </div>
+            </div>
+            <div class="error-msg" id="guardianError" role="alert" aria-live="polite"></div>
+            <button type="submit" class="btn-primary" id="guardianBtn">Daftar sebagai Penjaga</button>
+          </form>
+
+          <!-- Guardian code reveal (shown after successful register) -->
+          <div class="code-reveal hidden" id="guardianCodeReveal" aria-live="polite">
+            <p class="code-label">Kod anda untuk dikongsi:</p>
+            <div class="code-digits" id="guardianCodeDigits" aria-label="Guardian code">——————</div>
+            <p class="code-hint">Hantar kod ini kepada warga emas anda melalui WhatsApp atau panggilan telefon.</p>
+            <button class="btn-secondary" onclick="copyCode()">📋 Salin Kod</button>
+            <button class="btn-primary" style="margin-top:0.5rem" onclick="goToLogin()">Pergi ke Log Masuk</button>
+          </div>
+        </div>
+
+        <!-- Elderly register -->
+        <div id="rp-elderly" class="role-panel hidden">
+          <p class="role-hint">Daftar sebagai <strong>Warga Emas</strong>. Masukkan kod 6-digit yang diberikan oleh penjaga anda.</p>
+          <form id="elderlyForm" autocomplete="on" novalidate>
+            <div class="field">
+              <label for="eUsername">Nama Pengguna</label>
+              <input type="text" id="eUsername" name="username" placeholder="nama_pengguna" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="ePhone">Nombor WhatsApp <span class="optional">(pilihan)</span></label>
+              <input type="tel" id="ePhone" name="phone" placeholder="+601X-XXXXXXX" autocomplete="tel">
+            </div>
+            <div class="field">
+              <label for="ePassword">Kata Laluan</label>
+              <div class="password-wrap">
+                <input type="password" id="ePassword" name="password" placeholder="Min 8 aksara" autocomplete="new-password" required>
+                <button type="button" class="eye-btn" aria-label="Tunjuk kata laluan" onclick="togglePw('ePassword', this)">👁</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="eGuardianCode">Kod Penjaga</label>
+              <input type="text" id="eGuardianCode" name="guardianCode" placeholder="6 digit dari penjaga" maxlength="6" inputmode="numeric" autocomplete="off" required>
+            </div>
+            <div class="error-msg" id="elderlyError" role="alert" aria-live="polite"></div>
+            <button type="submit" class="btn-primary" id="elderlyBtn">Daftar sebagai Warga Emas</button>
+          </form>
+        </div>
+
+      </div><!-- end panel-register -->
+
+    </div><!-- end card -->
+
+    <p class="footer-note">© 2025 SelamatLah · Percuma · Selamat · Swasta</p>
+  </div>
+
+  <script src="auth.js"></script>
+</body>
+</html>
