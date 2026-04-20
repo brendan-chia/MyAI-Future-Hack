@@ -431,6 +431,49 @@ app.post('/api/analyse-image', async (req, res) => {
 
     const result = await require('./image').analyseImageDirect(base64Data, mime);
 
+    // If user is logged-in and has a guardian, push alert for HIGH/MEDIUM
+    let alertSent = false;
+    console.log(`[analyse-image] session userId=${req.session?.userId}, username=${req.session?.username}, risk=${result.risk_level}`);
+    if (req.session?.userId &&
+        (result.risk_level === 'HIGH' || result.risk_level === 'MEDIUM')) {
+      try {
+        const db  = getDb();
+        const raw = db.exec(
+          `SELECT guardian_id FROM web_accounts WHERE id = ${req.session.userId} LIMIT 1`
+        );
+        const gRows = raw && raw[0] && raw[0].values;
+        console.log(`[alert] guardian_id lookup for user ${req.session.userId}:`, gRows);
+        if (gRows && gRows.length) {
+          const guardianId = gRows[0][0];
+          if (guardianId) {
+            const snippet = `[Image detected]`.slice(0, 120);
+            db.run(
+              `INSERT INTO family_alerts (guardian_id, elderly_id, elderly_name, risk_level, scam_type, snippet)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [guardianId, req.session.userId, req.session.username,
+               result.risk_level, result.scam_type || null, snippet]
+            );
+            pushAlertToGuardian(guardianId, {
+              elderly: req.session.username,
+              risk_level: result.risk_level,
+              scam_type: result.scam_type || null,
+              snippet,
+              time: new Date().toISOString(),
+            });
+            alertSent = true;
+            console.log(`[alert] ✅ Pushed alert to guardian ${guardianId} for user ${req.session.username}`);
+          } else {
+            console.log(`[alert] ⚠️ User ${req.session.username} has no guardian_id linked`);
+          }
+        }
+      } catch (alertErr) {
+        console.warn('[alert push] error:', alertErr.message);
+      }
+    } else {
+      if (!req.session?.userId) console.log(`[alert] ⚠️ No session — user not logged in, cannot push alert`);
+    }
+
+    result.alertSent = alertSent;
     res.json(result);
   } catch (err) {
     console.error('[analyse-image] error:', err);
