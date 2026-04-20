@@ -35,7 +35,7 @@ const TEST_MESSAGES = [
 ];
 
 async function runTests() {
-  console.log('=== SelamatLah — Gemini API Test ===\n');
+  console.log('=== SafeLah — Gemini API Test ===\n');
 
   if (!process.env.GEMINI_API_KEY) {
     console.error('❌ GEMINI_API_KEY not set in .env');

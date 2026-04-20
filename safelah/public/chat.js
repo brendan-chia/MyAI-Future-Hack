@@ -1,4 +1,4 @@
-// ── SelamatLah Chat Client — Conversational Auth + Scam Detection ─────────────
+// ── SafeLah Chat Client — Conversational Auth + Scam Detection ─────────────
 
 const chatArea        = document.getElementById('chatArea');
 const messageInput    = document.getElementById('messageInput');
@@ -42,10 +42,10 @@ let authState = {
       updateHeaderBadge();
       if (data.role === 'guardian') startAlertStream();
       addBotMessage(
-        `👋 Selamat kembali, *${data.username}*!\n` +
+          `👋 Welcome back, *${data.username}*!\n` +
         (data.role === 'guardian'
-          ? `👨‍👩‍👧 Anda log masuk sebagai Penjaga.\nTaip /mycode untuk lihat kod anda.\n\nHantar mesej mencurigakan untuk disemak.`
-          : `Hantar mesej mencurigakan untuk disemak.`)
+            ? `👨‍👩‍👧 You are logged in as a Guardian.\nType /mycode to view your code.\n\nSend a suspicious message to check it.`
+            : `Send a suspicious message to check it.`)
       );
     } else {
       showWelcome();
@@ -60,13 +60,13 @@ function showWelcome() {
   const welcomeEl = document.getElementById('welcomeMsg');
   if (welcomeEl) welcomeEl.remove();
   addBotMessage(
-    `🛡️ Selamat datang ke *SelamatLah*!\n\n` +
-    `Saya pembantu semakan penipuan anda.\n\n` +
-    `Taip arahan:\n` +
-    `  /start    — mulakan analisis kelompok (teks + gambar)\n` +
-    `  /register — daftar akaun baru\n` +
-    `  /login    — log masuk\n\n` +
-    `Atau terus hantar mesej mencurigakan untuk semak tanpa akaun.`
+    `🛡️ Welcome to *SafeLah*!\n\n` +
+    `I am your scam-checking assistant.\n\n` +
+    `Type a command:\n` +
+    `  /start    — start batch analysis (text + images)\n` +
+    `  /register — create a new account\n` +
+    `  /login    — log in\n\n` +
+    `Or send a suspicious message directly to check it without an account.`
   );
 }
 
@@ -85,7 +85,7 @@ function updateHeaderBadge() {
   if (logout) logout.style.display = 'flex';
   if (icon)   icon.textContent  = authState.user.role === 'guardian' ? '👨‍👩‍👧' : '👴';
   if (name)   name.textContent  = authState.user.username +
-    (authState.user.role === 'guardian' ? ' (Penjaga)' : '');
+    (authState.user.role === 'guardian' ? ' (Guardian)' : '');
 }
 
 // Hide badge/logout until logged in
@@ -238,10 +238,10 @@ async function handleSend() {
     const textCount = batchMessages.filter(m => m.type === 'text').length;
     const imgCount  = batchMessages.filter(m => m.type === 'image').length;
     addBotMessage(
-      `✅ Dikumpul: *${textCount}* mesej, *${imgCount}* gambar\n\n` +
-      `Terus hantar mesej/gambar lain, atau taip:\n` +
-      `  /analyze — analisis semua\n` +
-      `  /cancel — batalkan`
+      `✅ Collected: *${textCount}* messages, *${imgCount}* images\n\n` +
+      `Keep sending more messages/images, or type:\n` +
+      `  /analyze — analyze everything\n` +
+      `  /cancel — cancel`
     );
     isProcessing = false;
     updateSendBtn();
@@ -263,29 +263,29 @@ async function handleSlashCommand(cmd) {
 
   if (lower === '/register') {
     if (authState.loggedIn) {
-      addBotMessage(`✋ Anda sudah log masuk sebagai *${authState.user.username}*.\nTaip /logout untuk log keluar dahulu.`);
+      addBotMessage(`✋ You are already logged in as *${authState.user.username}*.\nType /logout to log out first.`);
       return;
     }
     authState.mode = 'reg_username';
     authState.data = {};
-    addBotMessage('📝 Daftar akaun baru\n\nMasukkan *nama pengguna* anda:');
+    addBotMessage('📝 Register a new account\n\nEnter your *username*:');
     return;
   }
 
   if (lower === '/login') {
     if (authState.loggedIn) {
-      addBotMessage(`✋ Anda sudah log masuk sebagai *${authState.user.username}*.`);
+      addBotMessage(`✋ You are already logged in as *${authState.user.username}*.`);
       return;
     }
     authState.mode = 'login_username';
     authState.data = {};
-    addBotMessage('🔑 Log masuk\n\nMasukkan *nama pengguna* anda:');
+    addBotMessage('🔑 Log in\n\nEnter your *username*:');
     return;
   }
 
   if (lower === '/logout') {
     if (!authState.loggedIn) {
-      addBotMessage('❓ Anda belum log masuk.');
+      addBotMessage('❓ You are not logged in yet.');
       return;
     }
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
@@ -298,7 +298,7 @@ async function handleSlashCommand(cmd) {
 
   if (lower === '/mycode') {
     if (!authState.loggedIn || authState.user.role !== 'guardian') {
-      addBotMessage('❌ Arahan ini hanya untuk Penjaga yang telah log masuk.');
+      addBotMessage('❌ This command is only for logged-in Guardians.');
       return;
     }
     try {
@@ -314,25 +314,25 @@ async function handleSlashCommand(cmd) {
   // ── Batch mode commands ──────────────────────────────────────────────────
   if (lower === '/start' || lower === '/mula') {
     if (batchMode) {
-      addBotMessage(`⚠️ Mod kelompok sudah aktif. Anda ada *${batchMessages.length}* item.\nTaip /analyze untuk analisis atau /cancel untuk batalkan.`);
+      addBotMessage(`⚠️ Batch mode is already active. You have *${batchMessages.length}* items.\nType /analyze to analyze or /cancel to stop.`);
       return;
     }
     batchMode = true;
     batchMessages = [];
     addBotMessage(
-      `📦 *Mod Analisis Kelompok*\n\n` +
-      `Sekarang, hantar semua mesej mencurigakan — teks dan/atau gambar.\n\n` +
-      `Saya akan kumpulkan semuanya, kemudian analisis sebagai satu perbualan.\n\n` +
-      `Arahan:\n` +
-      `  /analyze — analisis semua mesej yang dikumpul\n` +
-      `  /cancel  — batalkan dan buang semua`
+      `📦 *Batch Analysis Mode*\n\n` +
+      `Now send all suspicious messages - text and/or images.\n\n` +
+      `I will collect everything, then analyze it as one conversation.\n\n` +
+      `Commands:\n` +
+      `  /analyze — analyze all collected messages\n` +
+      `  /cancel  — cancel and discard everything`
     );
     return;
   }
 
   if (lower === '/analyze' || lower === '/analisis') {
     if (!batchMode || batchMessages.length === 0) {
-      addBotMessage('❌ Tiada mesej untuk dianalisis.\nTaip /start dahulu, kemudian hantar mesej mencurigakan.');
+      addBotMessage('❌ There are no messages to analyze.\nType /start first, then send suspicious messages.');
       return;
     }
     batchMode = false;
@@ -348,18 +348,18 @@ async function handleSlashCommand(cmd) {
     const count = batchMessages.length;
     batchMode = false;
     batchMessages = [];
-    addBotMessage(`🗑️ Sesi kelompok dibatalkan. ${count} item dibuang.`);
+    addBotMessage(`🗑️ Batch session cancelled. ${count} items discarded.`);
     return;
   }
 
   if (lower.startsWith('/family ')) {
     const code = lower.replace('/family ', '').trim();
     if (!authState.loggedIn) {
-      addBotMessage('❌ Sila /login dahulu sebelum menggunakan /family.');
+      addBotMessage('❌ Please /login first before using /family.');
       return;
     }
     if (!/^\d{6}$/.test(code)) {
-      addBotMessage('❌ Kod penjaga mesti tepat 6 digit. Contoh: /family 482917');
+      addBotMessage('❌ Guardian code must be exactly 6 digits. Example: /family 482917');
       return;
     }
     isProcessing = true;
@@ -380,9 +380,9 @@ async function handleSlashCommand(cmd) {
         authState.user.role = 'elderly';
         updateHeaderBadge();
         addBotMessage(
-          `✅ Berjaya disambungkan kepada Penjaga *${data.guardianName}*! 🔗\n\n` +
-          `Mulai sekarang, apabila saya mengesan penipuan berisiko tinggi dalam mesej anda, ` +
-          `${data.guardianName} akan menerima amaran secara automatik.`
+          `✅ Successfully linked to Guardian *${data.guardianName}*! 🔗\n\n` +
+          `From now on, when I detect a high-risk scam in your messages, ` +
+          `${data.guardianName} will receive an automatic alert.`
         );
       }
     } catch (_) {
@@ -396,16 +396,16 @@ async function handleSlashCommand(cmd) {
   }
 
   addBotMessage(
-    `❓ Arahan tidak dikenali: *${cmd}*\n\n` +
-    `Arahan yang tersedia:\n` +
-    `  /register — daftar akaun\n` +
-    `  /login    — log masuk\n` +
-    `  /logout   — log keluar\n` +
-    `  /start    — mulakan analisis kelompok\n` +
-    `  /analyze  — analisis mesej yang dikumpul\n` +
-    `  /cancel   — batalkan sesi kelompok\n` +
-    `  /mycode   — lihat kod penjaga anda\n` +
-    `  /family [6-digit] — hubungkan ke penjaga`
+    `❓ Unknown command: *${cmd}*\n\n` +
+    `Available commands:\n` +
+    `  /register — register an account\n` +
+    `  /login    — log in\n` +
+    `  /logout   — log out\n` +
+    `  /start    — start batch analysis\n` +
+    `  /analyze  — analyze collected messages\n` +
+    `  /cancel   — cancel batch session\n` +
+    `  /mycode   — view your Guardian code\n` +
+    `  /family [6-digit] — link to a Guardian`
   );
 }
 
@@ -416,44 +416,44 @@ async function handleAuthStep(value) {
   // ── REGISTER FLOW ──────────────────────────────────────────────────────────
   if (mode === 'reg_username') {
     if (!value || value.length < 3) {
-      addBotMessage('❌ Nama pengguna mesti sekurang-kurangnya 3 aksara. Cuba lagi:');
+      addBotMessage('❌ Username must be at least 3 characters. Try again:');
       return;
     }
     if (/\s/.test(value)) {
-      addBotMessage('❌ Nama pengguna tidak boleh mengandungi ruang. Cuba lagi:');
+      addBotMessage('❌ Username cannot contain spaces. Try again:');
       return;
     }
     authState.data.username = value;
     authState.mode = 'reg_password';
-    addBotMessage(`👍 Nama pengguna: *${value}*\n\nSekarang masukkan *kata laluan* (sekurang-kurangnya 8 aksara):`);
-    showPasswordInput('Kata laluan...');
+    addBotMessage(`👍 Username: *${value}*\n\nNow enter a *password* (at least 8 characters):`);
+    showPasswordInput('Password...');
     return;
   }
 
   if (mode === 'reg_password') {
     if (!value || value.length < 8) {
-      addBotMessage('❌ Kata laluan mesti sekurang-kurangnya 8 aksara. Cuba lagi:');
-      showPasswordInput('Kata laluan...');
+      addBotMessage('❌ Password must be at least 8 characters. Try again:');
+      showPasswordInput('Password...');
       return;
     }
     authState.data.password = value;
     authState.mode = 'reg_confirm';
-    addBotMessage('🔒 Ok! Masukkan semula kata laluan untuk *sahkan*:');
-    showPasswordInput('Sahkan kata laluan...');
+    addBotMessage('🔒 Okay! Enter the password again to *confirm* it:');
+    showPasswordInput('Confirm password...');
     return;
   }
 
   if (mode === 'reg_confirm') {
     if (value !== authState.data.password) {
-      addBotMessage('❌ Kata laluan tidak sepadan. Masukkan semula kata laluan:');
+      addBotMessage('❌ Passwords do not match. Enter the password again:');
       authState.mode = 'reg_password';
-      showPasswordInput('Kata laluan...');
+      showPasswordInput('Password...');
       return;
     }
     // Call register API
     isProcessing = true;
     updateSendBtn();
-    const thinking = addThinking('Mendaftar...');
+    const thinking = addThinking('Registering...');
     try {
       const r    = await fetch('/api/auth/register', {
         method: 'POST',
@@ -466,7 +466,7 @@ async function handleAuthStep(value) {
       if (!r.ok) {
         authState.mode = 'idle';
         authState.data = {};
-        addBotMessage(`❌ ${data.error || 'Pendaftaran gagal.'}\n\nTaip /register untuk cuba lagi.`);
+        addBotMessage(`❌ ${data.error || 'Registration failed.'}\n\nType /register to try again.`);
       } else {
         authState.loggedIn = true;
         authState.mode     = 'logged_in';
@@ -474,21 +474,21 @@ async function handleAuthStep(value) {
         authState.data     = {};
         updateHeaderBadge();
         startAlertStream();
-        addBotMessage(`✅ Akaun berjaya didaftar!\n\nAnda log masuk sebagai *${data.username}*.\n\nKod anda untuk dikongsi dengan ahli keluarga:`);
+        addBotMessage(`✅ Account successfully registered!\n\nYou are logged in as *${data.username}*.\n\nYour code to share with family:`);
         addPinMessage(data.guardianCode, data.username);
         addBotMessage(
-          `📤 Cara guna:\n` +
-          `1. Kongsi kod di atas kepada ahli keluarga anda\n` +
-          `2. Mereka buka SelamatLah, taip /register untuk daftar\n` +
-          `3. Kemudian taip /family ${data.guardianCode}\n` +
-          `4. Apabila mereka jumpa mesej penipuan, anda akan dapat amaran segera 🔔`
+          `📤 How to use:\n` +
+          `1. Share the code above with your family member\n` +
+          `2. They open SafeLah, type /register to sign up\n` +
+          `3. Then type /family ${data.guardianCode}\n` +
+          `4. When they find a scam message, you will get an instant alert 🔔`
         );
       }
     } catch (_) {
       thinking.remove();
       authState.mode = 'idle';
       authState.data = {};
-      addBotMessage('❌ Ralat rangkaian. Taip /register untuk cuba lagi.');
+      addBotMessage('❌ Network error. Type /register to try again.');
     } finally {
       isProcessing = false;
       updateSendBtn();
@@ -500,15 +500,15 @@ async function handleAuthStep(value) {
   if (mode === 'login_username') {
     authState.data.username = value;
     authState.mode = 'login_password';
-    addBotMessage(`Masukkan *kata laluan* untuk *${value}*:`);
-    showPasswordInput('Kata laluan...');
+    addBotMessage(`Enter the *password* for *${value}*:`);
+    showPasswordInput('Password...');
     return;
   }
 
   if (mode === 'login_password') {
     isProcessing = true;
     updateSendBtn();
-    const thinking = addThinking('Log masuk...');
+    const thinking = addThinking('Logging in...');
     try {
       const r    = await fetch('/api/auth/login', {
         method: 'POST',
@@ -521,7 +521,7 @@ async function handleAuthStep(value) {
       if (!r.ok) {
         authState.mode = 'idle';
         authState.data = {};
-        addBotMessage(`❌ ${data.error || 'Log masuk gagal.'}\n\nTaip /login untuk cuba lagi.`);
+        addBotMessage(`❌ ${data.error || 'Log in failed.'}\n\nType /login to try again.`);
       } else {
         authState.loggedIn = true;
         authState.mode     = 'logged_in';
@@ -531,15 +531,15 @@ async function handleAuthStep(value) {
         if (data.role === 'guardian') {
           startAlertStream();
           addBotMessage(
-            `✅ Selamat datang kembali, *${data.username}*! 👨‍👩‍👧\n\n` +
-            `Taip /mycode untuk lihat kod penjaga anda.\n` +
-            `Hantar mesej mencurigakan untuk disemak.`
+            `✅ Welcome back, *${data.username}*! 👨‍👩‍👧\n\n` +
+            `Type /mycode to view your Guardian code.\n` +
+            `Send suspicious messages to check them.`
           );
         } else {
           addBotMessage(
-            `✅ Selamat datang, *${data.username}*! 👴\n\n` +
-            `Hantar mesej mencurigakan untuk disemak.\n` +
-            `Jika ada penipuan, penjaga anda akan dapat amaran segera.`
+            `✅ Welcome, *${data.username}*! 👴\n\n` +
+            `Send suspicious messages to check them.\n` +
+            `If there is a scam, your Guardian will get an instant alert.`
           );
         }
       }
@@ -547,7 +547,7 @@ async function handleAuthStep(value) {
       thinking.remove();
       authState.mode = 'idle';
       authState.data = {};
-      addBotMessage('❌ Ralat rangkaian. Taip /login untuk cuba lagi.');
+      addBotMessage('❌ Network error. Type /login to try again.');
     } finally {
       isProcessing = false;
       updateSendBtn();
@@ -585,11 +585,11 @@ async function runScamCheck(text, image) {
     addVerdict(getVerdictText(data), data?.risk_level || 'UNKNOWN');
     addPipelineDetails(data);
     if (data?.alertSent) {
-      addBotMessage('🔔 Amaran keselamatan telah dihantar secara automatik kepada penjaga anda.');
+      addBotMessage('🔔 A security alert has been sent automatically to your Guardian.');
     }
   } catch (err) {
     thinking.remove();
-    addVerdict('Maaf, semakan tidak tersedia sekarang.\n\nCuba lagi sebentar. 🙏', 'UNKNOWN');
+    addVerdict('Sorry, checking is not available right now.\n\nPlease try again shortly. 🙏', 'UNKNOWN');
     console.error('Analysis error:', err);
   } finally {
     isProcessing = false;
@@ -604,7 +604,7 @@ async function runBatchAnalysis() {
   const count = batchMessages.length;
   const textCount = batchMessages.filter(m => m.type === 'text').length;
   const imgCount  = batchMessages.filter(m => m.type === 'image').length;
-  const thinking = addThinking(`Menganalisis ${count} item (${textCount} mesej, ${imgCount} gambar)...`);
+  const thinking = addThinking(`Analyzing ${count} items (${textCount} messages, ${imgCount} images)...`);
 
   try {
     const res = await fetch('/api/analyse-batch', {
@@ -623,20 +623,20 @@ async function runBatchAnalysis() {
 
     // Show batch summary header
     addBotMessage(
-      `✅ *Analisis Kelompok Selesai*\n` +
-      `Dianalisis: *${data.total_messages || count}* item\n` +
-      `Mod: Analisis Perbualan`
+      `✅ *Batch Analysis Complete*\n` +
+      `Analyzed: *${data.total_messages || count}* items\n` +
+      `Mode: Conversation analysis`
     );
 
     // Show verdict
     addVerdict(getVerdictText(data), data?.risk_level || 'UNKNOWN');
     addPipelineDetails(data);
     if (data?.alertSent) {
-      addBotMessage('🔔 Amaran keselamatan telah dihantar secara automatik kepada penjaga anda.');
+      addBotMessage('🔔 A security alert has been sent automatically to your Guardian.');
     }
   } catch (err) {
     thinking.remove();
-    addVerdict('Maaf, analisis kelompok gagal.\n\nCuba lagi sebentar. 🙏', 'UNKNOWN');
+    addVerdict('Sorry, batch analysis failed.\n\nPlease try again shortly. 🙏', 'UNKNOWN');
     console.error('Batch analysis error:', err);
   } finally {
     batchMessages = [];
@@ -803,9 +803,9 @@ function addPinMessage(code, username) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble pin-bubble';
   bubble.innerHTML = `
-    <div class="pin-label">Kod Penjaga untuk ${username}</div>
+    <div class="pin-label">Guardian code for ${username}</div>
     <div class="pin-digits">${code.split('').join(' ')}</div>
-    <button class="pin-copy-btn" onclick="copyPin(this, '${code}')">📋 Salin Kod</button>
+    <button class="pin-copy-btn" onclick="copyPin(this, '${code}')">📋 Copy code</button>
   `;
 
   content.appendChild(bubble);
@@ -818,7 +818,7 @@ function addPinMessage(code, username) {
 window.copyPin = function(btn, code) {
   navigator.clipboard.writeText(code).then(() => {
     const orig = btn.textContent;
-    btn.textContent = '✅ Tersalin!';
+    btn.textContent = '✅ Copied!';
     setTimeout(() => { btn.textContent = orig; }, 2000);
   });
 };
@@ -840,7 +840,7 @@ function addGuardianAlert(alert) {
   const riskIcon = alert.risk_level === 'HIGH' ? '🔴' : '🟡';
   bubble.innerHTML =
     `<strong>${riskIcon} AMARAN KELUARGA</strong><br>` +
-    `<em>${alert.elderly}</em> telah menerima mesej ${alert.risk_level} berisiko!<br><br>` +
+    `<em>${alert.elderly}</em> received a ${alert.risk_level} risk message!<br><br>` +
     `${alert.scam_type ? `Jenis: <strong>${alert.scam_type}</strong><br>` : ''}` +
     `Serpihan: <em>"${alert.snippet}..."</em>`;
 
@@ -909,7 +909,7 @@ function addThinking(label) {
   bubble.className = 'message-bubble';
   bubble.innerHTML = `
     <div class="thinking-dots"><span></span><span></span><span></span></div>
-    <span style="font-size:0.78rem;color:var(--text-muted)">${label || 'Sedang semak...'}</span>
+    <span style="font-size:0.78rem;color:var(--text-muted)">${label || 'Checking...'}</span>
   `;
 
   content.appendChild(bubble);
@@ -950,9 +950,9 @@ function addVerdict(text, riskLevel) {
 
 function getVerdictText(data) {
   if (data && typeof data.verdict === 'string' && data.verdict.trim()) return data.verdict;
-  if (data && typeof data.reason_bm === 'string' && data.reason_bm.trim()) return `⚠️ Keputusan:\n${data.reason_bm}`;
+  if (data && typeof data.reason_bm === 'string' && data.reason_bm.trim()) return `⚠️ Result:\n${data.reason_bm}`;
   if (data && typeof data.reason_en === 'string' && data.reason_en.trim()) return `⚠️ Result:\n${data.reason_en}`;
-  return 'Maaf, keputusan tidak dapat dipaparkan. Sila cuba semula.';
+  return 'Sorry, the result could not be displayed. Please try again.';
 }
 
 function addPipelineDetails(data) {
@@ -963,14 +963,14 @@ function addPipelineDetails(data) {
   if (data.flow) lines.push(`Pipeline: ${data.flow}`);
   const conf = Number(data.confidence);
   if (Number.isFinite(conf)) lines.push(`Confidence: ${Math.round(conf * 100)}%`);
-  if (data.ccid?.found) lines.push(`PDRM Semak Mule: ${data.ccid.reports || 0} laporan`);
-  else if (data.ccid) lines.push('PDRM Semak Mule: tiada padanan');
-  if (data.vertex?.found) lines.push(`Vertex AI Search: ${data.vertex.hits || 0} rekod`);
-  else if (data.vertex) lines.push('Vertex AI Search: tiada padanan');
-  if (Array.isArray(data.extracted_phones) && data.extracted_phones.length) indicators.push(`${data.extracted_phones.length} nombor telefon`);
-  if (Array.isArray(data.extracted_accounts) && data.extracted_accounts.length) indicators.push(`${data.extracted_accounts.length} akaun bank`);
+  if (data.ccid?.found) lines.push(`PDRM Semak Mule: ${data.ccid.reports || 0} report(s)`);
+  else if (data.ccid) lines.push('PDRM Semak Mule: no match');
+  if (data.vertex?.found) lines.push(`Vertex AI Search: ${data.vertex.hits || 0} record(s)`);
+  else if (data.vertex) lines.push('Vertex AI Search: no match');
+  if (Array.isArray(data.extracted_phones) && data.extracted_phones.length) indicators.push(`${data.extracted_phones.length} phone number(s)`);
+  if (Array.isArray(data.extracted_accounts) && data.extracted_accounts.length) indicators.push(`${data.extracted_accounts.length} bank account(s)`);
   if (Array.isArray(data.extracted_urls) && data.extracted_urls.length) indicators.push(`${data.extracted_urls.length} URL`);
-  if (indicators.length) lines.push(`Indikator: ${indicators.join(', ')}`);
+  if (indicators.length) lines.push(`Indicators: ${indicators.join(', ')}`);
   if (!lines.length) return;
 
   const wrapper = document.createElement('div');
@@ -1017,7 +1017,7 @@ function addAnalyzedConversation(messages) {
   // Header
   const header = document.createElement('div');
   header.className = 'analyzed-convo-header';
-  header.innerHTML = '<strong>📨 Dianalisis:</strong>';
+  header.innerHTML = '<strong>📨 Analyzed:</strong>';
   bubble.appendChild(header);
 
   // Each message
@@ -1027,7 +1027,7 @@ function addAnalyzedConversation(messages) {
 
     const label = document.createElement('span');
     label.className = 'analyzed-convo-label';
-    label.textContent = msg.type === 'image' ? '🖼️ Gambar:' : 'Mesej:';
+    label.textContent = msg.type === 'image' ? '🖼️ Image:' : 'Message:';
 
     const text = document.createElement('span');
     text.className = 'analyzed-convo-text';
@@ -1044,7 +1044,7 @@ function addAnalyzedConversation(messages) {
 
   const time = document.createElement('span');
   time.className = 'message-time';
-  time.textContent = 'Urutan dianalisis';
+  time.textContent = 'Analysis order';
 
   content.appendChild(bubble);
   content.appendChild(time);

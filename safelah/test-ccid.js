@@ -8,7 +8,7 @@ const TESTS = [
 ];
 
 async function run() {
-  console.log('=== SelamatLah — CCID Semak Mule Test ===\n');
+  console.log('=== SafeLah — CCID Semak Mule Test ===\n');
   console.log('Note: CCID site may be slow. Each check takes 3-8 seconds.\n');
 
   for (const t of TESTS) {

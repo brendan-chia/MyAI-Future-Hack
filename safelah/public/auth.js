@@ -1,4 +1,4 @@
-// ── SelamatLah Auth Client ────────────────────────────────────────────────────
+// ── SafeLah Auth Client ────────────────────────────────────────────────────
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function setError(id, msg) {
@@ -11,7 +11,7 @@ function setLoading(btn, loading) {
   if (loading) {
     btn.disabled = true;
     btn.dataset.origText = btn.textContent;
-    btn.innerHTML = '<span class="spinner"></span> Tunggu...';
+    btn.innerHTML = '<span class="spinner"></span> Please wait...';
   } else {
     btn.disabled = false;
     btn.textContent = btn.dataset.origText || btn.textContent;
@@ -66,7 +66,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   const password = document.getElementById('loginPassword').value;
 
   if (!username || !password) {
-    setError('loginError', 'Sila isi semua medan.');
+    setError('loginError', 'Please fill in all fields.');
     return;
   }
 
@@ -80,7 +80,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
-      setError('loginError', data.error || 'Log masuk gagal.');
+      setError('loginError', data.error || 'Log in failed.');
       return;
     }
 
@@ -91,7 +91,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
     window.location.href = '/';
   } catch (err) {
-    setError('loginError', 'Ralat rangkaian. Cuba lagi.');
+    setError('loginError', 'Network error. Please try again.');
     console.error(err);
   } finally {
     setLoading(btn, false);
@@ -108,11 +108,11 @@ document.getElementById('guardianForm').addEventListener('submit', async (e) => 
   const password = document.getElementById('gPassword').value;
 
   if (!username || !password) {
-    setError('guardianError', 'Nama pengguna dan kata laluan diperlukan.');
+    setError('guardianError', 'Username and password are required.');
     return;
   }
   if (password.length < 8) {
-    setError('guardianError', 'Kata laluan mesti sekurang-kurangnya 8 aksara.');
+    setError('guardianError', 'Password must be at least 8 characters.');
     return;
   }
 
@@ -126,7 +126,7 @@ document.getElementById('guardianForm').addEventListener('submit', async (e) => 
     const data = await res.json();
 
     if (!res.ok) {
-      setError('guardianError', data.error || 'Pendaftaran gagal.');
+      setError('guardianError', data.error || 'Registration failed.');
       return;
     }
 
@@ -137,7 +137,7 @@ document.getElementById('guardianForm').addEventListener('submit', async (e) => 
     // Display digits with spaces for readability
     document.getElementById('guardianCodeDigits').textContent = data.guardianCode.split('').join(' ');
   } catch (err) {
-    setError('guardianError', 'Ralat rangkaian. Cuba lagi.');
+    setError('guardianError', 'Network error. Please try again.');
     console.error(err);
   } finally {
     setLoading(btn, false);
@@ -155,15 +155,15 @@ document.getElementById('elderlyForm').addEventListener('submit', async (e) => {
   const guardianCode = document.getElementById('eGuardianCode').value.trim();
 
   if (!username || !password || !guardianCode) {
-    setError('elderlyError', 'Sila isi semua medan yang diperlukan.');
+    setError('elderlyError', 'Please fill in all required fields.');
     return;
   }
   if (password.length < 8) {
-    setError('elderlyError', 'Kata laluan mesti sekurang-kurangnya 8 aksara.');
+    setError('elderlyError', 'Password must be at least 8 characters.');
     return;
   }
   if (!/^\d{6}$/.test(guardianCode)) {
-    setError('elderlyError', 'Kod penjaga mesti 6 digit nombor.');
+    setError('elderlyError', 'Guardian code must be exactly 6 digits.');
     return;
   }
 
@@ -177,18 +177,18 @@ document.getElementById('elderlyForm').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
-      setError('elderlyError', data.error || 'Pendaftaran gagal.');
+      setError('elderlyError', data.error || 'Registration failed.');
       return;
     }
 
     // Success — redirect to login with a success note
     setError('elderlyError', '');
-    alert('✅ Akaun berjaya dibuat! Sila log masuk.');
+    alert('✅ Account created successfully! Please log in.');
     switchTab('login');
     document.getElementById('loginUsername').value = username;
     document.getElementById('loginPassword').focus();
   } catch (err) {
-    setError('elderlyError', 'Ralat rangkaian. Cuba lagi.');
+    setError('elderlyError', 'Network error. Please try again.');
     console.error(err);
   } finally {
     setLoading(btn, false);

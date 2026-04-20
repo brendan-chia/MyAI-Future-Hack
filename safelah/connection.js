@@ -2,7 +2,7 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const dbPath = process.env.DB_PATH || './selamatlah.db';
+const dbPath = process.env.DB_PATH || './safelah.db';
 let db = null;
 
 // sql.js is async to initialize — this promise resolves when DB is ready

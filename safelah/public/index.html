@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SelamatLah — Semak Mesej Mencurigakan</title>
-  <meta name="description" content="SelamatLah membantu anda semak mesej penipuan. Taip /register atau /login untuk mula, atau hantar mesej mencurigakan terus.">
+  <title>SafeLah — Check Suspicious Messages</title>
+  <meta name="description" content="SafeLah helps you check scam messages. Type /register or /login to start, or send a suspicious message directly.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,26 +18,26 @@
         <div class="logo">
           <span class="logo-icon">🛡️</span>
           <div class="logo-text">
-            <h1>SelamatLah</h1>
-            <span class="tagline">Scam Detection Assistant</span>
+            <h1>SafeLah</h1>
+            <span class="tagline">Scam detection assistant</span>
           </div>
         </div>
       </div>
       <div class="header-right">
         <div class="status-dot"></div>
         <span class="status-text">Online</span>
-        <div class="user-badge" id="userBadge" title="Maklumat akaun" style="display:none">
+        <div class="user-badge" id="userBadge" title="Account information" style="display:none">
           <span class="user-badge-icon" id="userBadgeIcon">👤</span>
           <span class="user-badge-name" id="userBadgeName">...</span>
         </div>
-        <button class="logout-btn" id="logoutBtn" title="Log keluar" style="display:none">⏻</button>
+        <button class="logout-btn" id="logoutBtn" title="Log out" style="display:none">⏻</button>
       </div>
     </header>
 
     <!-- Chat area -->
     <main class="chat-area" id="chatArea">
       <div class="chat-date">
-        <span>Hari ini</span>
+        <span>Today</span>
       </div>
     </main>
 
@@ -63,40 +63,40 @@
         </label>
         <textarea
           id="messageInput"
-          placeholder="Taip /start untuk mod kelompok, atau paste mesej mencurigakan..."
+          placeholder="Type /start for batch mode, or paste a suspicious message..."
           rows="1"
           autofocus
         ></textarea>
-        <button class="send-btn" id="sendBtn" title="Hantar" disabled>
+        <button class="send-btn" id="sendBtn" title="Send" disabled>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
       </div>
-      <p class="input-hint">Taip /start untuk analisis kelompok • /register atau /login • Atau seret &amp; lepas screenshot</p>
+      <p class="input-hint">Type /start for batch analysis • /register or /login • Or drag &amp; drop a screenshot</p>
     </footer>
   </div>
 
   <!-- Password input overlay (shown during password steps) -->
   <div class="pwd-overlay" id="pwdOverlay" style="display:none;">
     <div class="pwd-container">
-      <input type="password" id="pwdInput" placeholder="Kata laluan..." autocomplete="off">
-      <button class="send-btn" id="pwdSendBtn" title="Hantar">
+      <input type="password" id="pwdInput" placeholder="Password..." autocomplete="off">
+      <button class="send-btn" id="pwdSendBtn" title="Send">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/>
           <polygon points="22 2 15 22 11 13 2 9 22 2"/>
         </svg>
       </button>
     </div>
-    <p class="input-hint">🔒 Input ini tersembunyi — kata laluan anda tidak kelihatan</p>
+    <p class="input-hint">🔒 This input is hidden — your password is not visible</p>
   </div>
 
   <!-- Drop zone overlay -->
   <div class="drop-overlay" id="dropOverlay">
     <div class="drop-content">
       <div class="drop-icon">📷</div>
-      <p>Lepaskan screenshot di sini</p>
+      <p>Drop the screenshot here</p>
     </div>
   </div>
 

@@ -378,7 +378,7 @@ app.post('/api/analyse', async (req, res) => {
     console.error('[analyse] error:', err);
     res.status(500).json({
       error: 'Analysis failed',
-      verdict: 'Maaf, semakan tidak tersedia sekarang.\n\n❌ Jangan transfer wang kepada orang tidak dikenali\n❌ Jangan klik pautan dalam mesej tidak dikenali\n\nHotline Anti-Scam: 997',
+      verdict: 'Sorry, checking is not available right now.\n\n❌ Do not transfer money to strangers\n❌ Do not click links in unknown messages\n\nAnti-Scam Hotline: 997',
       risk_level: 'UNKNOWN',
     });
   }
@@ -713,7 +713,7 @@ app.post('/api/analyse-batch', async (req, res) => {
     console.error('[analyse-batch] error:', err);
     res.status(500).json({
       error: 'Batch analysis failed',
-      verdict: 'Maaf, analisis kelompok gagal. Sila cuba lagi.',
+      verdict: 'Sorry, batch analysis failed. Please try again.',
       risk_level: 'UNKNOWN',
     });
   }
@@ -823,7 +823,7 @@ app.get('/api/admin/export', adminGuard, (req, res) => {
       ...rows.map(r => COLS.map(c => escape(r[c])).join(',')),
     ];
 
-    const filename = `selamatlah_scam_intel_${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `safelah_scam_intel_${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csvLines.join('\r\n'));

@@ -24,7 +24,7 @@ async function analyseImage(from, message) {
     if (!mediaResult) {
       console.error(`[image] Download failed for ${from}`);
       await sendMessage(from,
-        'Maaf, tidak dapat memuat turun gambar ini. Sila cuba lagi atau hantarkan teks mesej tersebut. 🙏'
+        'Sorry, could not download this image. Please try again or send the text message instead. 🙏'
       );
       return;
     }
@@ -43,11 +43,11 @@ async function analyseImage(from, message) {
       const fallbackResult = await analyseImageWithGemini(base64Image, mime);
       if (!fallbackResult) {
         await sendMessage(from,
-          'Maaf, tidak dapat menganalisis gambar ini sekarang.\n\nSila hantarkan teks mesej tersebut untuk semakan, atau cuba lagi sebentar. 🙏'
+          'Sorry, could not analyze this image right now.\n\nPlease send the text message for review, or try again shortly. 🙏'
         );
         return;
       }
-      const verdictMsg = buildVerdict(fallbackResult, { found: false, reports: 0 }, 'bm');
+      const verdictMsg = buildVerdict(fallbackResult, { found: false, reports: 0 }, 'en');
       await sendMessage(from, verdictMsg);
       if (fallbackResult.risk_level === 'HIGH') await notifyGuardians(from, fallbackResult.scam_type);
       logScamIntelligence({
@@ -108,7 +108,7 @@ async function analyseImage(from, message) {
     console.error('[image] handler error:', err.message);
     console.error('[image] Stack:', err.stack);
     await sendMessage(from,
-      'Maaf, tidak dapat memproses gambar ini. Sila cuba lagi atau hantarkan teks mesej tersebut.'
+      'Sorry, could not process this image. Please try again or send the text message instead.'
     );
   }
 }
@@ -130,11 +130,11 @@ async function analyseImageDirect(base64Data, mimeType) {
       const fallbackResult = await analyseImageWithGemini(base64Data, mimeType);
       if (!fallbackResult) {
         return {
-          verdict: 'Maaf, tidak dapat menganalisis gambar ini sekarang.\n\nSila cuba paste teks mesej tersebut.',
+          verdict: 'Sorry, could not analyze this image right now.\n\nPlease paste the text message instead.',
           risk_level: 'UNKNOWN',
         };
       }
-      const verdictMsg = buildVerdict(fallbackResult, { found: false, reports: 0 }, 'bm');
+      const verdictMsg = buildVerdict(fallbackResult, { found: false, reports: 0 }, 'en');
       logScamIntelligence({
         scamType:   fallbackResult.scam_type,
         riskLevel:  fallbackResult.risk_level,
@@ -185,7 +185,7 @@ async function analyseImageDirect(base64Data, mimeType) {
   } catch (err) {
     console.error('[image_direct] error:', err);
     return {
-      verdict: 'Maaf, tidak dapat memproses gambar ini.',
+      verdict: 'Sorry, could not process this image.',
       risk_level: 'UNKNOWN',
     };
   }

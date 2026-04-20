@@ -10,27 +10,27 @@ const { processClarificationAnswer, processClarificationAnswerForConversation } 
 const processedIds = new Set();
 
 const ONBOARDING_MSG =
-  `Salam dan selamat datang ke SelamatLah! 🛡️\n\n` +
-  `Saya di sini untuk membantu anda semak mesej yang mencurigakan — supaya anda tidak kena tipu.\n\n` +
-  `Cara guna:\n` +
-  `• Forward sebarang mesej syak ke sini\n` +
-  `• Saya akan semak dan beritahu anda dalam masa beberapa saat\n\n` +
-  `Percuma. Selamat. Tiada maklumat peribadi dikongsi.\n\n` +
-  `Hantar /bantuan untuk lihat arahan lain.\n` +
-  `Nak daftarkan ahli keluarga sebagai "Penjaga"? Hantar /daftar.`;
+  `Hello and welcome to SafeLah! 🛡️\n\n` +
+  `I’m here to help you check suspicious messages so you do not get scammed.\n\n` +
+  `How to use:\n` +
+  `• Forward any suspicious message here\n` +
+  `• I will check it and tell you within a few seconds\n\n` +
+  `Free. Safe. No personal information is shared.\n\n` +
+  `Send /help to see more commands.\n` +
+  `Want to register a family member as a Guardian? Send /register.`;
 
 const RATE_LIMIT_MSG =
-  `Anda telah membuat banyak semakan hari ini. 😊\n` +
-  `Cuba lagi esok ya.\n\n` +
-  `Perlukan bantuan segera?\n` +
-  `Hotline Anti-Scam: 997 (8pg-8mlm setiap hari)`;
+  `You have made many checks today. 😊\n` +
+  `Please try again tomorrow.\n\n` +
+  `Need urgent help?\n` +
+  `Anti-Scam Hotline: 997 (8am-8pm daily)`;
 
 const UNSUPPORTED_MSG =
-  `Maaf, saya hanya boleh semak:\n` +
-  `• Mesej teks\n` +
-  `• Tangkapan skrin (gambar/screenshot)\n` +
-  `• Nota suara/audio\n\n` +
-  `Sila forward semula dalam format tersebut. 🙏`;
+  `Sorry, I can only check:\n` +
+  `• Text messages\n` +
+  `• Screenshots (images)\n` +
+  `• Voice notes / audio\n\n` +
+  `Please forward it again in one of those formats. 🙏`;
 
 /**
  * Handle incoming whatsapp-web.js message object
@@ -110,10 +110,10 @@ async function handleIncoming(message) {
         const audioCount = messages.filter(m => m.type === 'audio').length;
         const imageCount = messages.filter(m => m.type === 'image').length;
         const textCount = messages.filter(m => m.type === 'text').length;
-        const lang = updatedSession?.language || 'bm';
+        const lang = updatedSession?.language || 'en';
         
         const msgs = {
-          bm: `✅ Audio ${audioCount}, Gambar ${imageCount}, Mesej ${textCount} dikumpul.\n\nHantar /analisis untuk analisis atau terus forward mesej/audio/gambar lain.`,
+          bm: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
           en: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
         };
         
@@ -136,28 +136,28 @@ async function handleIncoming(message) {
             const audioCount = messages.filter(m => m.type === 'audio').length;
             const imageCount = messages.filter(m => m.type === 'image').length;
             const textCount = messages.filter(m => m.type === 'text').length;
-            const lang = updatedSession?.language || 'bm';
+            const lang = updatedSession?.language || 'en';
             
             const msgs = {
-              bm: `✅ Audio ${audioCount}, Gambar ${imageCount}, Mesej ${textCount} ditambah.\n\nHantar /analisis untuk analisis atau terus forward mesej lain.`,
+              bm: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
               en: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
             };
             
             await sendMessage(phone, msgs[lang] || msgs.bm);
           }
         } else {
-          const lang = session?.language || 'bm';
+          const lang = session?.language || 'en';
           const msgs = {
-            bm: 'Maaf, tidak dapat mentranskripsi audio. Sila cuba lagi.',
+            bm: 'Sorry, could not transcribe audio. Please try again.',
             en: 'Sorry, could not transcribe audio. Please try again.',
           };
           await sendMessage(phone, msgs[lang] || msgs.bm);
         }
       } catch (err) {
         console.error('[batch] Audio processing error:', err.message);
-        const lang = session?.language || 'bm';
+        const lang = session?.language || 'en';
         const msgs = {
-          bm: 'Maaf, ralat semasa memproses audio. Sila cuba lagi.',
+          bm: 'Sorry, there was an error processing the audio. Please try again.',
           en: 'Sorry, error processing audio. Please try again.',
         };
         await sendMessage(phone, msgs[lang] || msgs.bm);
@@ -180,28 +180,28 @@ async function handleIncoming(message) {
             const audioCount = messages.filter(m => m.type === 'audio').length;
             const imageCount = messages.filter(m => m.type === 'image').length;
             const textCount = messages.filter(m => m.type === 'text').length;
-            const lang = updatedSession?.language || 'bm';
+            const lang = updatedSession?.language || 'en';
             
             const msgs = {
-              bm: `✅ Audio ${audioCount}, Gambar ${imageCount}, Mesej ${textCount} dikumpul.\n\nHantar /analisis untuk analisis atau terus forward mesej/audio/gambar lain.`,
+              bm: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
               en: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
             };
             
             await sendMessage(phone, msgs[lang] || msgs.bm);
           }
         } else {
-          const lang = session?.language || 'bm';
+          const lang = session?.language || 'en';
           const msgs = {
-            bm: 'Maaf, tidak dapat memuat turun gambar. Sila cuba lagi.',
+            bm: 'Sorry, could not download image. Please try again.',
             en: 'Sorry, could not download image. Please try again.',
           };
           await sendMessage(phone, msgs[lang] || msgs.bm);
         }
       } catch (err) {
         console.error('[batch] Image processing error:', err.message);
-        const lang = session?.language || 'bm';
+        const lang = session?.language || 'en';
         const msgs = {
-          bm: 'Maaf, ralat semasa memproses gambar. Sila cuba lagi.',
+          bm: 'Sorry, there was an error processing the image. Please try again.',
           en: 'Sorry, error processing image. Please try again.',
         };
         await sendMessage(phone, msgs[lang] || msgs.bm);
@@ -213,7 +213,7 @@ async function handleIncoming(message) {
   // Normal mode: Determine message type and route
   if (hasMedia && (msgType === 'image' || msgType === 'document')) {
     // Image/media message
-    await sendMessage(phone, '⏳ Sedang semak gambar... sila tunggu sebentar.');
+    await sendMessage(phone, '⏳ Checking image... please wait a moment.');
     await analyseImage(phone, message);
   } else if (hasMedia && (msgType === 'ptt' || msgType === 'audio')) {
     // Audio message (voice note)
@@ -221,7 +221,7 @@ async function handleIncoming(message) {
     await analyseAudio(phone, message);
   } else if (text) {
     // Text message
-    await sendMessage(phone, '⏳ Sedang semak... sila tunggu sebentar.');
+    await sendMessage(phone, '⏳ Checking... please wait a moment.');
     await analyseText(phone, text);
   } else {
     await sendMessage(phone, UNSUPPORTED_MSG);

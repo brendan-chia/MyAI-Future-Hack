@@ -21,7 +21,7 @@ const DEMO_MESSAGES = [
 ];
 
 async function run() {
-  console.log('=== SelamatLah — Full Pipeline Test (No WhatsApp) ===\n');
+  console.log('=== SafeLah — Full Pipeline Test (No WhatsApp) ===\n');
 
   for (let i = 0; i < DEMO_MESSAGES.length; i++) {
     const text = DEMO_MESSAGES[i];
