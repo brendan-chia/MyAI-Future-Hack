@@ -3,44 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SelamatLah — Semak Mesej Mencurigakan</title>
-  <meta name="description" content="SelamatLah helps you check if a message is a scam. Paste any suspicious text or screenshot and get instant analysis.">
+  <title>SafeLah — Scam Detection Assistant</title>
+  <meta name="description" content="SafeLah helps you check if a message is a scam. Paste any suspicious text or screenshot and get instant analysis.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary:  { DEFAULT: '#1b6ef5', dark: '#1557c0', light: '#e8f0fe' },
+            accent:   '#00c853',
+            danger:   { DEFAULT: '#e53935', bg: '#1a0808' },
+            warning:  { DEFAULT: '#ff9800', bg: '#2d2415' },
+            safe:     { DEFAULT: '#00c853', bg: '#152d1a' },
+            surface:  { DEFAULT: '#1e2030', hover: '#252840' },
+            bd:       '#2a2d42',
+            chatbg:   '#161822',
+            shield:   '#071a0e',
+            base:     '#0f1117',
+            ink:      '#e8eaed',
+            muted:    '#8b8fa3',
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <div class="app" id="app">
-    <!-- Header -->
-    <header class="header">
-      <div class="header-left">
-        <div class="logo">
-          <span class="logo-icon">🛡️</span>
-          <div class="logo-text">
-            <h1>SelamatLah</h1>
-            <span class="tagline">Scam Detection Assistant</span>
-          </div>
+<body class="bg-base text-ink font-sans h-dvh overflow-hidden">
+
+  <div class="flex flex-col h-dvh max-w-[720px] mx-auto relative" id="app">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <header class="flex items-center justify-between h-16 px-5 bg-surface border-b border-bd shrink-0 z-10">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-xl shrink-0 logo-icon">
+          🛡️
+        </div>
+        <div class="flex flex-col leading-none gap-1">
+          <h1 class="text-[1.05rem] font-extrabold tracking-tight logo-gradient">SafeLah</h1>
+          <span class="text-[0.68rem] text-muted font-medium">Scam detection assistant</span>
         </div>
       </div>
-      <div class="header-right">
-        <div class="status-dot"></div>
-        <span class="status-text">Online</span>
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-accent status-dot"></span>
+        <span class="text-accent text-xs font-semibold">Online</span>
       </div>
     </header>
 
-    <!-- Chat area -->
-    <main class="chat-area" id="chatArea">
-      <div class="chat-date">
-        <span>Today</span>
+    <!-- ── Community shield banner ────────────────────────────────────────── -->
+    <div class="flex items-center justify-between px-5 py-2.5 bg-shield border-b border-bd shrink-0">
+      <div class="flex items-center gap-2">
+        <svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span class="text-sm font-semibold text-ink">Community shield</span>
+      </div>
+      <div class="text-right">
+        <p class="text-accent font-bold text-sm leading-tight">12,847 scams reported</p>
+        <p class="text-muted text-[0.65rem]">342 this week</p>
+      </div>
+    </div>
+
+    <!-- ── Nav tabs ────────────────────────────────────────────────────────── -->
+    <nav class="flex shrink-0 bg-surface border-b border-bd" id="navTabs">
+      <button class="nav-tab flex-1 py-2.5 text-[0.72rem] font-semibold text-primary border-b-2 border-primary transition-colors" id="tabCheck">Check</button>
+      <button class="nav-tab flex-1 py-2.5 text-[0.72rem] font-medium text-muted border-b-2 border-transparent hover:text-ink transition-colors" id="tabHistory">History</button>
+      <button class="nav-tab flex-1 py-2.5 text-[0.72rem] font-semibold text-accent border-b-2 border-transparent transition-colors" id="tabReport">Report ♦</button>
+      <button class="nav-tab flex-1 py-2.5 text-[0.72rem] font-medium text-muted border-b-2 border-transparent hover:text-ink transition-colors" id="tabStats">Stats</button>
+    </nav>
+
+    <!-- ── Chat area ───────────────────────────────────────────────────────── -->
+    <main class="chat-area flex-1 overflow-y-auto py-5 px-4 flex flex-col gap-4" id="chatArea">
+
+      <!-- Date badge -->
+      <div class="flex justify-center">
+        <span class="text-[0.68rem] text-muted bg-surface px-4 py-1 rounded-full font-medium tracking-wide">Today</span>
       </div>
 
-      <!-- Welcome message -->
+      <!-- Welcome message (static) -->
       <div class="message bot-message welcome-msg" id="welcomeMsg">
         <div class="message-avatar">🛡️</div>
         <div class="message-content">
           <div class="message-bubble">
-            <p class="msg-greeting">Salam! Saya <strong>SelamatLah</strong> — pembantu semakan penipuan anda.</p>
+            <p class="text-accent font-bold text-sm flex items-center gap-1.5 msg-greeting">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Welcome to SafeLah!
+            </p>
             <div class="msg-steps">
               <div class="step">
                 <span class="step-num">1</span>
@@ -55,14 +110,13 @@
                 <span>Saya akan beritahu jika ia selamat atau penipuan</span>
               </div>
             </div>
-            <p class="msg-safe">Percuma • Selamat • Tiada data disimpan</p>
           </div>
           <span class="message-time">SelamatLah Bot</span>
         </div>
       </div>
     </main>
 
-    <!-- Image preview bar (shows when image attached) -->
+    <!-- ── Image preview bar ───────────────────────────────────────────────── -->
     <div class="image-preview-bar" id="imagePreviewBar" style="display:none;">
       <div class="image-preview-inner">
         <img id="imagePreviewImg" src="" alt="Preview">
@@ -71,12 +125,12 @@
       <span class="image-preview-label">Screenshot attached</span>
     </div>
 
-    <!-- Input area -->
-    <footer class="input-area">
-      <div class="input-container">
+    <!-- ── Input area ──────────────────────────────────────────────────────── -->
+    <footer class="px-4 pt-3 shrink-0 bg-surface border-t border-bd" style="padding-bottom: max(12px, env(safe-area-inset-bottom));">
+      <div class="input-container" id="inputContainer">
         <label class="attach-btn" id="attachBtn" title="Attach screenshot">
           <input type="file" accept="image/*" id="imageInput" hidden>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
             <circle cx="8.5" cy="8.5" r="1.5"/>
             <polyline points="21 15 16 10 5 21"/>
@@ -84,22 +138,23 @@
         </label>
         <textarea
           id="messageInput"
-          placeholder="Paste mesej mencurigakan di sini..."
+          placeholder="Type /start for batch mode..."
           rows="1"
           autofocus
         ></textarea>
         <button class="send-btn" id="sendBtn" title="Semak mesej" disabled>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
       </div>
-      <p class="input-hint">Tip: Boleh juga seret & lepas screenshot terus ke chat</p>
+      <p class="text-[0.65rem] text-muted text-center mt-2 opacity-60">Tip: Boleh juga seret &amp; lepas screenshot terus ke chat</p>
     </footer>
-  </div>
 
-  <!-- Drop zone overlay -->
+  </div><!-- /app -->
+
+  <!-- ── Drop overlay ────────────────────────────────────────────────────── -->
   <div class="drop-overlay" id="dropOverlay">
     <div class="drop-content">
       <div class="drop-icon">📷</div>
