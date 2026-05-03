@@ -15,7 +15,7 @@ let wakeLock = null;
 let isMonitoring = false;
 
 // UI elements (cached on init)
-let startBtn, stopBtn, statusPill, instructionBanner;
+let startBtn, stopBtn, testBtn, statusPill, instructionBanner;
 let transcriptPanel, riskBadge, advicePanel;
 let guardianSection, guardianPhoneDisplay, setGuardianBtn, callGuardianBtn;
 let microphoneIndicator, connectionStatus, systemFeedback;
@@ -38,11 +38,15 @@ function initializeUI() {
   microphoneIndicator = document.getElementById('microphoneIndicator');
   connectionStatus = document.getElementById('connectionStatus');
   systemFeedback = document.getElementById('systemFeedback');
+  testBtn = document.getElementById('testBtn');
 
   startBtn.addEventListener('click', startMonitoring);
   stopBtn.addEventListener('click', stopMonitoring);
   setGuardianBtn.addEventListener('click', setGuardianNumber);
   callGuardianBtn.addEventListener('click', callGuardian);
+  if (testBtn) {
+    testBtn.addEventListener('click', startMonitoringTestMode);
+  }
 
   updateGuardianDisplay();
   updateConnectionStatus('idle');
@@ -140,6 +144,47 @@ function setStatus(state) {
 }
 
 /**
+ * Start monitoring in TEST MODE (skips microphone permission for debugging)
+ */
+async function startMonitoringTestMode() {
+  try {
+    setStatus('listening');
+    startBtn.disabled = true;
+    if (testBtn) testBtn.disabled = true;
+    updateConnectionStatus('connecting');
+    updateSystemFeedback('🧪 TEST MODE: Skipping microphone, testing connection only...');
+    microphoneIndicator.style.display = 'block';
+
+    // Create a dummy silent stream for testing
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime); // Silent
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start();
+
+    // Get the actual destination (may not work, but we only need minimal setup)
+    const mediaStreamAudioDestinationNode = audioContext.createMediaStreamDestination();
+    gainNode.connect(mediaStreamAudioDestinationNode);
+    stream = mediaStreamAudioDestinationNode.stream;
+    
+    console.log('[liveCall] Test mode: Created mock audio stream');
+    updateSystemFeedback('✓ Mock audio stream created');
+
+    // Continue with normal WebSocket flow
+    continuteMonitoringAfterMicrophone();
+  } catch (err) {
+    console.error('[liveCall] Test mode error:', err);
+    setStatus('idle');
+    startBtn.disabled = false;
+    if (testBtn) testBtn.disabled = false;
+    updateConnectionStatus('error');
+    updateSystemFeedback('❌ Test mode failed: ' + err.message);
+  }
+}
+
+/**
  * Start monitoring call
  */
 async function startMonitoring() {
@@ -164,11 +209,30 @@ async function startMonitoring() {
       return;
     }
 
-    // 2. Show instruction banner
+    // Continue with WebSocket and monitoring
+    await continuteMonitoringAfterMicrophone();
+  } catch (err) {
+    console.error('[liveCall] Start monitoring error:', err);
+    setStatus('idle');
+    startBtn.disabled = false;
+    updateConnectionStatus('error');
+    updateSystemFeedback('Error: ' + err.message);
+  }
+}
+
+/**
+ * Continue monitoring after microphone is available (shared by both normal and test modes)
+ */
+async function continuteMonitoringAfterMicrophone() {
+  try {
+    startBtn.disabled = true;
+    if (testBtn) testBtn.disabled = true;
+
+    // Show instruction banner
     instructionBanner.textContent = 'Please put your phone on speaker now';
     instructionBanner.style.display = 'block';
 
-    // 3. Acquire screen wake lock
+    // Acquire screen wake lock
     try {
       if ('wakeLock' in navigator) {
         wakeLock = await navigator.wakeLock.request('screen');
@@ -178,7 +242,7 @@ async function startMonitoring() {
       console.log('[liveCall] Wake lock not available');
     }
 
-    // 4. Open WebSocket
+    // Open WebSocket
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${location.host}/ws/live-call`;
     console.log('[liveCall] WebSocket URL:', wsUrl);
