@@ -155,11 +155,12 @@ async function startMonitoring() {
       updateSystemFeedback('✓ Microphone access granted');
       microphoneIndicator.style.display = 'block';
     } catch (err) {
-      alert('Please allow microphone access to use the call companion');
+      console.error('[liveCall] Microphone error:', err);
+      alert('Microphone access required. Please allow microphone permission in your browser settings.');
       setStatus('idle');
       startBtn.disabled = false;
       updateConnectionStatus('error');
-      updateSystemFeedback('Microphone access denied');
+      updateSystemFeedback('❌ Microphone permission denied. Allow access in browser settings.');
       return;
     }
 
@@ -219,11 +220,11 @@ async function startMonitoring() {
       transcriptPanel.style.display = 'block';
     };
 
-    ws.onerror = () => {
-      console.error('[liveCall] WebSocket error');
+    ws.onerror = (event) => {
+      console.error('[liveCall] WebSocket error:', event);
       updateConnectionStatus('error');
-      updateSystemFeedback('❌ Connection error. Please try again.');
-      alert('Connection error. Please restart monitoring.');
+      updateSystemFeedback('❌ Server connection failed. Check your network.');
+      alert('Connection failed. Please check your network and try again.');
     };
 
     ws.onclose = () => {
