@@ -181,34 +181,51 @@ async function startMonitoring() {
     // 4. Open WebSocket
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${location.host}/ws/live-call`;
+    console.log('[liveCall] WebSocket URL:', wsUrl);
+    console.log('[liveCall] Session ID:', sessionId);
     updateSystemFeedback('Establishing connection...');
     
     ws = new WebSocket(wsUrl);
+    console.log('[liveCall] WebSocket object created, readyState:', ws.readyState);
+
+    // Add connection timeout
+    const connectionTimeout = setTimeout(() => {
+      if (ws.readyState === WebSocket.CONNECTING) {
+        console.error('[liveCall] WebSocket connection timeout');
+        updateSystemFeedback('❌ Connection timeout. Server may be offline.');
+        ws.close();
+      }
+    }, 5000); // 5 second timeout
 
     ws.onopen = () => {
-      console.log('[liveCall] WebSocket connected');
+      clearTimeout(connectionTimeout);
+      console.log('[liveCall] WebSocket connected, readyState:', ws.readyState);
       updateConnectionStatus('connected');
       updateSystemFeedback('✓ Connected and monitoring');
       
       // 5. Send init message
-      ws.send(
-        JSON.stringify({
-          type: 'init',
-          sessionId,
-          guardianPhone: guardianPhone || null,
-        })
-      );
+      const initMsg = JSON.stringify({
+        type: 'init',
+        sessionId,
+        guardianPhone: guardianPhone || null,
+      });
+      console.log('[liveCall] Sending init message:', initMsg);
+      ws.send(initMsg);
 
       // 6. Create MediaRecorder
       recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus',
       });
+      console.log('[liveCall] MediaRecorder created');
 
       // 7. On data available, send to WebSocket
       recorder.ondataavailable = (event) => {
         if (ws && ws.readyState === WebSocket.OPEN) {
+          console.log('[liveCall] Sending audio chunk, size:', event.data.size);
           ws.send(event.data);
           updateSystemFeedback('📡 Audio data sent');
+        } else {
+          console.warn('[liveCall] WebSocket not open, cannot send audio. readyState:', ws.readyState);
         }
       };
 
@@ -221,14 +238,18 @@ async function startMonitoring() {
     };
 
     ws.onerror = (event) => {
-      console.error('[liveCall] WebSocket error:', event);
+      console.error('[liveCall] WebSocket error event:', event);
+      console.error('[liveCall] WebSocket readyState:', ws.readyState);
+      console.error('[liveCall] WebSocket URL attempted:', wsUrl);
       updateConnectionStatus('error');
-      updateSystemFeedback('❌ Server connection failed. Check your network.');
-      alert('Connection failed. Please check your network and try again.');
+      updateSystemFeedback('❌ Server connection failed. Check console (F12) for details.');
+      alert('Connection failed:\nOpen DevTools (F12) → Console tab to see error details.\nCheck if server is running on port 3000.');
     };
 
-    ws.onclose = () => {
-      console.log('[liveCall] WebSocket closed');
+    ws.onclose = (event) => {
+      clearTimeout(connectionTimeout);
+      console.log('[liveCall] WebSocket closed, code:', event.code, 'reason:', event.reason);
+      console.log('[liveCall] Clean close?', event.wasClean);
       if (isMonitoring) {
         updateConnectionStatus('idle');
         updateSystemFeedback('Monitoring stopped');

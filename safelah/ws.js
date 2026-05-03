@@ -21,6 +21,8 @@ const { notifyGuardians } = require('./guardian');
  * @param {Object} app - Express app instance (express-ws must already be initialized)
  */
 function setupLiveCallWS(app) {
+  console.log('[ws] Setting up /ws/live-call route with app.ws()');
+  
   app.ws('/ws/live-call', async (ws, req) => {
     let initReceived = false;
     let guardianAlertSent = false;
@@ -29,7 +31,12 @@ function setupLiveCallWS(app) {
     let sttStream = null;
     let buffer = null;
 
-    console.log('[ws-live-call] New WebSocket connection');
+    console.log('[ws-live-call] ✓ New WebSocket connection established!');
+    console.log('[ws-live-call] Connection headers:', {
+      'upgrade': req.headers.upgrade,
+      'connection': req.headers.connection,
+      'origin': req.headers.origin
+    });
 
     /**
      * Message handler: init or audio data

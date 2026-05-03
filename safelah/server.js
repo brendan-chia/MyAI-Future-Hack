@@ -10,6 +10,10 @@ const { initializeWhatsApp, getClient } = require('./whatsapp');
 
 const app = express();
 
+// ── Initialize express-ws EARLY (before middleware) ─────────────────────────
+const expressWs = require('express-ws')(app);
+console.log('[server] express-ws initialized');
+
 // ── Core Middleware ─────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -909,7 +913,7 @@ process.on('unhandledRejection', (reason) => {
 // NOTE: Cloud Run service must be deployed with --timeout=3600 for WebSocket
 // sessions to survive long calls. Add this flag to your gcloud run deploy cmd.
 // NOTE: getUserMedia() requires HTTPS. Cloud Run provides HTTPS by default.
-const expressWs = require('express-ws')(app);
+
 const { setupLiveCallWS } = require('./ws');
 const { registerClient, removeClient } = require('./verdictBroadcaster');
 
