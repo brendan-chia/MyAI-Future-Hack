@@ -904,3 +904,26 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   console.error('[server] Unhandled rejection:', reason);
 });
+
+// ── Live Call Companion feature ──────────────────────────────────────────────
+// NOTE: Cloud Run service must be deployed with --timeout=3600 for WebSocket
+// sessions to survive long calls. Add this flag to your gcloud run deploy cmd.
+// NOTE: getUserMedia() requires HTTPS. Cloud Run provides HTTPS by default.
+const expressWs = require('express-ws')(app);
+const { setupLiveCallWS } = require('./ws');
+const { registerClient, removeClient } = require('./verdictBroadcaster');
+
+// SSE endpoint — phone polls this to receive live verdicts
+app.get('/api/live-verdict/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  registerClient(sessionId, res);
+  req.on('close', () => removeClient(sessionId));
+});
+
+// Register WebSocket handler
+setupLiveCallWS(app);
+// ── End Live Call Companion ──────────────────────────────────────────────────
