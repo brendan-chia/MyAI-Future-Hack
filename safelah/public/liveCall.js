@@ -18,6 +18,7 @@ let isMonitoring = false;
 let startBtn, stopBtn, statusPill, instructionBanner;
 let transcriptPanel, riskBadge, advicePanel;
 let guardianSection, guardianPhoneDisplay, setGuardianBtn, callGuardianBtn;
+let microphoneIndicator, connectionStatus, systemFeedback;
 
 /**
  * Initialize UI references and attach event listeners
@@ -34,6 +35,9 @@ function initializeUI() {
   guardianPhoneDisplay = document.getElementById('guardianPhoneDisplay');
   setGuardianBtn = document.getElementById('setGuardianBtn');
   callGuardianBtn = document.getElementById('callGuardianBtn');
+  microphoneIndicator = document.getElementById('microphoneIndicator');
+  connectionStatus = document.getElementById('connectionStatus');
+  systemFeedback = document.getElementById('systemFeedback');
 
   startBtn.addEventListener('click', startMonitoring);
   stopBtn.addEventListener('click', stopMonitoring);
@@ -41,10 +45,11 @@ function initializeUI() {
   callGuardianBtn.addEventListener('click', callGuardian);
 
   updateGuardianDisplay();
+  updateConnectionStatus('idle');
 }
 
 /**
- * Update the guardian phone display on the page
+ * Update guardian phone display
  */
 function updateGuardianDisplay() {
   if (guardianPhone) {
@@ -52,9 +57,39 @@ function updateGuardianDisplay() {
     callGuardianBtn.href = `tel:${guardianPhone}`;
     callGuardianBtn.style.display = 'inline-block';
   } else {
-    guardianPhoneDisplay.textContent = 'Belum ditetapkan / Not set';
+    guardianPhoneDisplay.textContent = 'Not set';
     callGuardianBtn.style.display = 'none';
   }
+}
+
+/**
+ * Update connection status indicator
+ */
+function updateConnectionStatus(state) {
+  // state: 'idle', 'connecting', 'connected', 'error'
+  const messages = {
+    idle: 'Ready to start',
+    connecting: 'Connecting...',
+    connected: '✓ Connected',
+    error: '✗ Connection error',
+  };
+
+  const classes = {
+    idle: 'connecting',
+    connecting: 'connecting',
+    connected: 'connected',
+    error: 'error',
+  };
+
+  connectionStatus.textContent = messages[state] || messages.idle;
+  connectionStatus.className = classes[state] || classes.idle;
+}
+
+/**
+ * Update system feedback message
+ */
+function updateSystemFeedback(message) {
+  systemFeedback.textContent = message;
 }
 
 /**
@@ -62,7 +97,7 @@ function updateGuardianDisplay() {
  */
 function setGuardianNumber() {
   const newPhone = prompt(
-    'Masukkan nombor penjaga / Enter guardian number:',
+    'Enter guardian phone number:',
     guardianPhone || ''
   );
   if (newPhone && newPhone.trim()) {
@@ -87,10 +122,10 @@ function callGuardian() {
 function setStatus(state) {
   // state: 'idle', 'listening', 'analysing', 'alert'
   const labels = {
-    idle: 'Bersedia / Ready',
-    listening: 'Mendengar... / Listening...',
-    analysing: 'Menganalisis... / Analysing...',
-    alert: 'BAHAYA / DANGER',
+    idle: 'Ready',
+    listening: 'Listening...',
+    analysing: 'Analyzing...',
+    alert: 'DANGER!',
   };
 
   const colors = {
@@ -111,39 +146,49 @@ async function startMonitoring() {
   try {
     setStatus('listening');
     startBtn.disabled = true;
+    updateConnectionStatus('connecting');
+    updateSystemFeedback('Requesting microphone access...');
 
     // 1. Request microphone permission
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      updateSystemFeedback('✓ Microphone access granted');
+      microphoneIndicator.style.display = 'block';
     } catch (err) {
-      alert('Sila benarkan akses mikrofon / Please allow microphone access');
+      alert('Please allow microphone access to use the call companion');
       setStatus('idle');
       startBtn.disabled = false;
+      updateConnectionStatus('error');
+      updateSystemFeedback('Microphone access denied');
       return;
     }
 
     // 2. Show instruction banner
-    instructionBanner.textContent =
-      'Letakkan telefon dalam mod pembesar suara sekarang / Put your phone on speaker now';
+    instructionBanner.textContent = 'Please put your phone on speaker now';
     instructionBanner.style.display = 'block';
 
     // 3. Acquire screen wake lock
     try {
       if ('wakeLock' in navigator) {
         wakeLock = await navigator.wakeLock.request('screen');
+        updateSystemFeedback('✓ Screen wake lock activated');
       }
     } catch (e) {
-      // Silently fail — not all browsers support wake lock
       console.log('[liveCall] Wake lock not available');
     }
 
     // 4. Open WebSocket
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${location.host}/ws/live-call`;
+    updateSystemFeedback('Establishing connection...');
+    
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('[liveCall] WebSocket connected');
+      updateConnectionStatus('connected');
+      updateSystemFeedback('✓ Connected and monitoring');
+      
       // 5. Send init message
       ws.send(
         JSON.stringify({
@@ -162,27 +207,30 @@ async function startMonitoring() {
       recorder.ondataavailable = (event) => {
         if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(event.data);
+          updateSystemFeedback('📡 Audio data sent');
         }
       };
 
       recorder.start(3000); // Emit data every 3 seconds
       isMonitoring = true;
       stopBtn.disabled = false;
+      stopBtn.style.display = 'flex';
+      startBtn.style.display = 'none';
+      transcriptPanel.style.display = 'block';
     };
 
     ws.onerror = () => {
       console.error('[liveCall] WebSocket error');
-      showBilingualMessage(
-        'Koneksyon terputus. Sila cuba lagi. / Connection lost. Please try again.'
-      );
+      updateConnectionStatus('error');
+      updateSystemFeedback('❌ Connection error. Please try again.');
+      alert('Connection error. Please restart monitoring.');
     };
 
     ws.onclose = () => {
       console.log('[liveCall] WebSocket closed');
       if (isMonitoring) {
-        showBilingualMessage(
-          'Pemantauan dihentikan / Monitoring stopped'
-        );
+        updateConnectionStatus('idle');
+        updateSystemFeedback('Monitoring stopped');
       }
     };
 
@@ -204,9 +252,11 @@ async function startMonitoring() {
     };
   } catch (err) {
     console.error('[liveCall] Start monitoring error:', err);
-    alert('Error starting monitor / Ralat memulakan pemantauan');
+    alert('Error starting monitor: ' + err.message);
     setStatus('idle');
     startBtn.disabled = false;
+    updateConnectionStatus('error');
+    updateSystemFeedback('Failed to start monitoring');
   }
 }
 
@@ -217,8 +267,13 @@ async function stopMonitoring() {
   isMonitoring = false;
   setStatus('idle');
   instructionBanner.style.display = 'none';
+  microphoneIndicator.style.display = 'none';
   startBtn.disabled = false;
+  startBtn.style.display = 'flex';
   stopBtn.disabled = true;
+  stopBtn.style.display = 'none';
+  updateConnectionStatus('idle');
+  updateSystemFeedback('Monitoring stopped');
 
   if (recorder && recorder.state !== 'inactive') {
     recorder.stop();
@@ -280,6 +335,7 @@ function updateVerdictDisplay(verdict) {
 
     transcriptPanel.scrollTop = transcriptPanel.scrollHeight;
     transcriptPanel.style.display = 'block';
+    updateSystemFeedback('📝 Transcription received');
   }
 
   // Update risk badge
@@ -288,34 +344,35 @@ function updateVerdictDisplay(verdict) {
   if (riskLevel === 'SAFE' || riskLevel === 'LOW') {
     riskBadge.style.backgroundColor = '#28a745';
     riskBadge.style.animation = 'none';
-    riskBadge.textContent = 'Selamat / Safe';
+    riskBadge.textContent = '✓ Safe';
     advicePanel.style.display = 'none';
+    updateSystemFeedback('✓ This conversation appears safe');
     setStatus('listening');
   } else if (riskLevel === 'MEDIUM') {
     riskBadge.style.backgroundColor = '#ffc107';
     riskBadge.style.animation = 'none';
     riskBadge.style.color = '#000';
-    riskBadge.textContent = 'Syak Wasangka / Suspicious';
+    riskBadge.textContent = '⚠️ Suspicious Activity Detected';
     advicePanel.style.display = 'block';
     advicePanel.style.backgroundColor = '#fff3cd';
-    advicePanel.innerHTML = `<strong>Nasihat / Advice:</strong><br>${advice || ''}`;
+    advicePanel.innerHTML = `<strong>⚠️ Advice:</strong><br>${advice || 'Be cautious with this caller'}`;
+    updateSystemFeedback('⚠️ Suspicious pattern detected');
     setStatus('analysing');
   } else if (riskLevel === 'HIGH') {
     riskBadge.style.backgroundColor = '#dc3545';
     riskBadge.style.animation = 'pulse 1s infinite';
     riskBadge.style.color = '#fff';
-    riskBadge.textContent = 'BAHAYA! SCAM DIKESAN / DANGER! SCAM DETECTED';
+    riskBadge.textContent = '🚨 SCAM DETECTED! DANGER!';
     advicePanel.style.display = 'block';
     advicePanel.style.backgroundColor = '#f8d7da';
     advicePanel.innerHTML = `
-      <strong>⚠️ BAHAYA / WARNING:</strong><br>
-      Jenis: ${scamType || 'Tidak diketahui / Unknown'}<br>
+      <strong>🚨 WARNING:</strong><br>
+      Scam Type: ${scamType || 'Unknown'}<br>
       <br>
-      ${advice || ''}
-      <br><br>
+      ${advice || 'Do not share personal information or money'}<br><br>
       ${
         guardianPhone
-          ? `<button id="emergencyCallBtn" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">Hubungi Penjaga / Call Guardian</button>`
+          ? `<button id="emergencyCallBtn" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">📞 Call Guardian</button>`
           : ''
       }
     `;
@@ -329,25 +386,9 @@ function updateVerdictDisplay(verdict) {
       }, 0);
     }
 
+    updateSystemFeedback('🚨 HIGH RISK SCAM DETECTED');
     setStatus('alert');
   }
-}
-
-/**
- * Show a bilingual message alert
- */
-function showBilingualMessage(msg) {
-  const div = document.createElement('div');
-  div.style.padding = '10px';
-  div.style.marginBottom = '10px';
-  div.style.backgroundColor = '#e2e3e5';
-  div.style.border = '1px solid #999';
-  div.style.borderRadius = '4px';
-  div.style.textAlign = 'center';
-  div.textContent = msg;
-  transcriptPanel.parentElement.insertBefore(div, transcriptPanel);
-
-  setTimeout(() => div.remove(), 3000);
 }
 
 // Initialize on DOM ready

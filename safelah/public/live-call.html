@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ms-MY">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SafeLah - Live Call Companion / Rakan Panggilan Langsung</title>
+    <title>SafeLah - Live Call Companion</title>
     <style>
       * {
         margin: 0;
@@ -27,6 +27,53 @@
         50% {
           opacity: 0.5;
         }
+      }
+
+      /* Microphone visualization animation */
+      @keyframes microphone-pulse {
+        0%, 100% {
+          transform: scale(1);
+          opacity: 0.6;
+        }
+        50% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+      }
+
+      #microphoneIndicator {
+        display: none;
+        font-size: 48px;
+        text-align: center;
+        margin: 16px 0;
+        animation: microphone-pulse 0.6s ease-in-out infinite;
+      }
+
+      #connectionStatus {
+        display: block;
+        padding: 8px 12px;
+        margin-bottom: 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+        background: #d4edda;
+        color: #155724;
+      }
+
+      #connectionStatus.connected {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      #connectionStatus.connecting {
+        background: #fff3cd;
+        color: #856404;
+      }
+
+      #connectionStatus.error {
+        background: #f8d7da;
+        color: #721c24;
       }
 
       /* Main container */
@@ -127,6 +174,9 @@
         transition: all 0.3s ease;
         -webkit-appearance: none;
         appearance: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       #startBtn {
@@ -353,12 +403,15 @@
       <!-- Header -->
       <div class="header">
         <h1>SafeLah</h1>
-        <p>Rakan Panggilan Langsung / Live Call Companion</p>
+        <p>Live Call Companion</p>
       </div>
+
+      <!-- Connection status -->
+      <div id="connectionStatus" class="connecting">Initializing...</div>
 
       <!-- Status pill -->
       <div class="status-section">
-        <div id="statusPill">Bersedia / Ready</div>
+        <div id="statusPill">Ready</div>
       </div>
 
       <!-- Instruction banner -->
@@ -366,24 +419,31 @@
 
       <!-- Main content -->
       <div class="content">
+        <!-- Microphone indicator -->
+        <div id="microphoneIndicator">🎤</div>
+
         <!-- Buttons -->
         <div class="button-group">
           <button id="startBtn">
-            🔴 Mula Pemantauan / Start Monitoring
+            🔴 Start Monitoring
           </button>
           <button id="stopBtn">
-            ⏹️ Berhenti / Stop
+            ⏹️ Stop Monitoring
           </button>
         </div>
 
         <!-- Risk badge -->
         <div id="riskBadge"></div>
 
+        <!-- Real-time feedback -->
+        <div class="panel-section">
+          <div class="panel-label">System Status</div>
+          <div id="systemFeedback" style="background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 6px; padding: 10px; font-size: 12px; color: #004085; margin-bottom: 12px;">Waiting to start...</div>
+        </div>
+
         <!-- Transcript panel -->
         <div class="panel-section">
-          <div class="panel-label">
-            Transkrip Langsung / Live Transcript
-          </div>
+          <div class="panel-label">Live Transcript</div>
           <div id="transcriptPanel"></div>
         </div>
 
@@ -393,15 +453,15 @@
         <!-- Guardian section -->
         <div id="guardianSection">
           <div class="guardian-label">
-            📞 Penjaga / Guardian
+            📞 Guardian Contact
           </div>
           <span id="guardianPhoneDisplay"></span>
           <div class="guardian-buttons">
             <a id="callGuardianBtn">
-              📞 Hubungi Penjaga / Call Guardian
+              📞 Call Guardian
             </a>
             <button id="setGuardianBtn">
-              ⚙️ Tetapkan Nombor Penjaga / Set Guardian Number
+              ⚙️ Set Guardian Number
             </button>
           </div>
         </div>
