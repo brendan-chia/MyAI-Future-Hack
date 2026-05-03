@@ -29,6 +29,7 @@ function setupLiveCallWS(app) {
     let sessionId = null;
     let guardianPhone = null;
     let sttStream = null;
+    let sttStreamReady = false;  // Track if STT stream is usable
     let buffer = null;
 
     console.log('[ws-live-call] ✓ New WebSocket connection established!');
@@ -147,10 +148,16 @@ function setupLiveCallWS(app) {
             (err) => {
               // Error callback from STT
               console.error(`[ws-live-call] ${sessionId} STT error:`, err.message);
+              sttStreamReady = false;  // Mark stream as no longer usable
+              // Close WebSocket on fatal STT error
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.close(1011, 'STT stream error: ' + err.message);
+              }
             }
           );
 
           initReceived = true;
+          sttStreamReady = true;  // Mark stream as ready
           console.log(
             `[ws-live-call] ${sessionId} STT stream initialized, ready for audio`
           );
@@ -165,13 +172,19 @@ function setupLiveCallWS(app) {
           return;
         }
 
-        if (!sttStream) {
-          console.warn('[ws-live-call] STT stream not ready');
+        if (!sttStream || !sttStreamReady) {
+          console.warn('[ws-live-call] STT stream not ready, cannot write audio');
           return;
         }
 
         // Write audio chunk to STT stream
-        sttStream.write(message);
+        try {
+          sttStream.write(message);
+        } catch (writeErr) {
+          console.error(`[ws-live-call] ${sessionId} Failed to write audio:`, writeErr.message);
+          sttStreamReady = false;
+          ws.close(1011, 'Failed to write audio to STT');
+        }
       } catch (err) {
         console.error('[ws-live-call] Message handler error:', err);
       }
@@ -183,10 +196,16 @@ function setupLiveCallWS(app) {
     ws.on('close', () => {
       console.log(`[ws-live-call] ${sessionId} WebSocket closed`);
 
-      // Cleanup
-      if (sttStream) {
-        sttStream.end();
+      // Cleanup - properly end the STT stream
+      if (sttStream && sttStreamReady) {
+        try {
+          sttStream.end();
+        } catch (err) {
+          console.error(`[ws-live-call] ${sessionId} Error closing STT stream:`, err.message);
+        }
       }
+      sttStreamReady = false;
+      
       if (buffer) {
         removeBuffer(sessionId);
       }
