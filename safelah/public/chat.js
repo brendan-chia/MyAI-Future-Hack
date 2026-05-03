@@ -64,6 +64,7 @@ function showWelcome() {
     `I am your scam-checking assistant.\n\n` +
     `Type a command:\n` +
     `  /start    — start batch analysis (text + images)\n` +
+    `  /call     — start call companion for scam detection\n` +
     `  /register — create a new account\n` +
     `  /login    — log in\n\n` +
     `Or send a suspicious message directly to check it without an account.`
@@ -102,7 +103,9 @@ if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     authState = { mode: 'idle', data: {}, loggedIn: false, user: null };
+    isCallActive = false;
     updateHeaderBadge();
+    updateCallButtonsVisibility();
     // Clear chat then show welcome
     chatArea.innerHTML = '';
     showWelcome();
@@ -352,6 +355,19 @@ async function handleSlashCommand(cmd) {
     return;
   }
 
+  if (lower === '/call') {
+    addBotMessage(
+      `📞 *Call Companion Mode*\n\n` +
+      `I will monitor your call and alert you to potential scams in real-time.\n\n` +
+      `🔊 Important: Please make sure your speaker is turned ON so you can hear alerts.\n\n` +
+      `Opening call companion...`
+    );
+    setTimeout(() => {
+      openCallCompanion();
+    }, 1000);
+    return;
+  }
+
   if (lower.startsWith('/family ')) {
     const code = lower.replace('/family ', '').trim();
     if (!authState.loggedIn) {
@@ -401,6 +417,7 @@ async function handleSlashCommand(cmd) {
     `  /register — register an account\n` +
     `  /login    — log in\n` +
     `  /logout   — log out\n` +
+    `  /call     — start call companion\n` +
     `  /start    — start batch analysis\n` +
     `  /analyze  — analyze collected messages\n` +
     `  /cancel   — cancel batch session\n` +
@@ -1056,6 +1073,62 @@ function addAnalyzedConversation(messages) {
 
 function scrollToBottom() {
   requestAnimationFrame(() => { chatArea.scrollTop = chatArea.scrollHeight; });
+}
+
+// ── Call companion ─────────────────────────────────────────────────────────────
+let isCallActive = false;
+let callWindow = null;
+
+function openCallCompanion() {
+  isCallActive = true;
+  updateCallButtonsVisibility();
+  // Mark call as active in sessionStorage for cross-window communication
+  sessionStorage.setItem('safelah_call_active', 'true');
+  callWindow = window.open('/live-call.html', 'safelah-call', 'width=480,height=800,resizable=yes,scrollbars=no');
+  
+  // Check if window is closed periodically
+  const checkWindowClosed = setInterval(() => {
+    if (!callWindow || callWindow.closed) {
+      isCallActive = false;
+      updateCallButtonsVisibility();
+      sessionStorage.removeItem('safelah_call_active');
+      clearInterval(checkWindowClosed);
+    }
+  }, 1000);
+}
+
+function endCall() {
+  isCallActive = false;
+  if (callWindow && !callWindow.closed) {
+    callWindow.close();
+  }
+  sessionStorage.removeItem('safelah_call_active');
+  updateCallButtonsVisibility();
+  addBotMessage('📞 Call companion ended. You can start another call with /call command anytime.');
+}
+
+function updateCallButtonsVisibility() {
+  const startBtn = document.getElementById('callStartBtn');
+  const endBtn = document.getElementById('callEndBtn');
+  if (startBtn) startBtn.style.display = isCallActive ? 'none' : 'flex';
+  if (endBtn) endBtn.style.display = isCallActive ? 'flex' : 'none';
+}
+
+// ── Button event listeners ─────────────────────────────────────────────────────
+const callStartBtn = document.getElementById('callStartBtn');
+const callEndBtn = document.getElementById('callEndBtn');
+
+if (callStartBtn) {
+  callStartBtn.addEventListener('click', () => {
+    addCommandMessage('/call');
+    handleSlashCommand('/call');
+  });
+}
+
+if (callEndBtn) {
+  callEndBtn.addEventListener('click', () => {
+    endCall();
+  });
 }
 
 updateSendBtn();
