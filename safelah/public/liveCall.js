@@ -13,6 +13,8 @@ let ws = null;
 let sse = null;
 let wakeLock = null;
 let isMonitoring = false;
+let isStopping = false;
+let finalVerdictResolver = null;
 
 // UI elements (cached on init)
 let startBtn, stopBtn, testBtn, statusPill, instructionBanner;
@@ -41,7 +43,7 @@ function initializeUI() {
   testBtn = document.getElementById('testBtn');
 
   startBtn.addEventListener('click', startMonitoring);
-  stopBtn.addEventListener('click', stopMonitoring);
+  stopBtn.addEventListener('click', () => stopMonitoring());
   setGuardianBtn.addEventListener('click', setGuardianNumber);
   callGuardianBtn.addEventListener('click', callGuardian);
   if (testBtn) {
@@ -74,8 +76,8 @@ function updateConnectionStatus(state) {
   const messages = {
     idle: 'Ready to start',
     connecting: 'Connecting...',
-    connected: '✓ Connected',
-    error: '✗ Connection error',
+    connected: 'Connected',
+    error: 'Connection error',
   };
 
   const classes = {
@@ -94,6 +96,74 @@ function updateConnectionStatus(state) {
  */
 function updateSystemFeedback(message) {
   systemFeedback.textContent = message;
+}
+
+function showMonitoringControls(active) {
+  startBtn.disabled = active;
+  startBtn.style.display = active ? 'none' : 'flex';
+  stopBtn.disabled = !active;
+  stopBtn.style.display = active ? 'flex' : 'none';
+  if (testBtn) {
+    testBtn.disabled = active;
+    testBtn.style.display = active ? 'none' : 'flex';
+  }
+}
+
+function resetLiveSession() {
+  sessionId = crypto.randomUUID();
+  finalVerdictResolver = null;
+  transcriptPanel.innerHTML = '';
+  transcriptPanel.style.display = 'none';
+  riskBadge.style.display = 'none';
+  advicePanel.style.display = 'none';
+}
+
+function waitForFinalVerdict(timeoutMs = 15000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      finalVerdictResolver = null;
+      resolve(null);
+    }, timeoutMs);
+
+    finalVerdictResolver = (verdict) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      finalVerdictResolver = null;
+      resolve(verdict);
+    };
+  });
+}
+
+function stopRecorderAndFlush() {
+  return new Promise((resolve) => {
+    if (!recorder || recorder.state === 'inactive') {
+      resolve();
+      return;
+    }
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
+        console.log('[liveCall] Sending final audio chunk, size:', event.data.size);
+        ws.send(event.data);
+      }
+    };
+    recorder.onstop = () => resolve();
+
+    try {
+      recorder.requestData();
+    } catch (err) {
+      console.warn('[liveCall] Could not request final recorder data:', err.message);
+    }
+    recorder.stop();
+  });
 }
 
 /**
@@ -148,11 +218,13 @@ function setStatus(state) {
  */
 async function startMonitoringTestMode() {
   try {
+    resetLiveSession();
     setStatus('listening');
-    startBtn.disabled = true;
-    if (testBtn) testBtn.disabled = true;
+    isMonitoring = true;
+    isStopping = false;
+    showMonitoringControls(true);
     updateConnectionStatus('connecting');
-    updateSystemFeedback('🧪 TEST MODE: Skipping microphone, testing connection only...');
+    updateSystemFeedback('TEST MODE: Skipping microphone, testing connection only...');
     microphoneIndicator.style.display = 'block';
 
     // Create a dummy silent stream for testing
@@ -170,17 +242,17 @@ async function startMonitoringTestMode() {
     stream = mediaStreamAudioDestinationNode.stream;
     
     console.log('[liveCall] Test mode: Created mock audio stream');
-    updateSystemFeedback('✓ Mock audio stream created');
+    updateSystemFeedback('Mock audio stream created');
 
     // Continue with normal WebSocket flow
     continuteMonitoringAfterMicrophone();
   } catch (err) {
     console.error('[liveCall] Test mode error:', err);
+    isMonitoring = false;
     setStatus('idle');
-    startBtn.disabled = false;
-    if (testBtn) testBtn.disabled = false;
+    showMonitoringControls(false);
     updateConnectionStatus('error');
-    updateSystemFeedback('❌ Test mode failed: ' + err.message);
+    updateSystemFeedback('Test mode failed: ' + err.message);
   }
 }
 
@@ -189,23 +261,27 @@ async function startMonitoringTestMode() {
  */
 async function startMonitoring() {
   try {
+    resetLiveSession();
     setStatus('listening');
-    startBtn.disabled = true;
+    isMonitoring = true;
+    isStopping = false;
+    showMonitoringControls(true);
     updateConnectionStatus('connecting');
     updateSystemFeedback('Requesting microphone access...');
 
     // 1. Request microphone permission
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      updateSystemFeedback('✓ Microphone access granted');
+      updateSystemFeedback('Microphone access granted');
       microphoneIndicator.style.display = 'block';
     } catch (err) {
       console.error('[liveCall] Microphone error:', err);
       alert('Microphone access required. Please allow microphone permission in your browser settings.');
+      isMonitoring = false;
       setStatus('idle');
-      startBtn.disabled = false;
+      showMonitoringControls(false);
       updateConnectionStatus('error');
-      updateSystemFeedback('❌ Microphone permission denied. Allow access in browser settings.');
+      updateSystemFeedback('Microphone permission denied. Allow access in browser settings.');
       return;
     }
 
@@ -213,8 +289,9 @@ async function startMonitoring() {
     await continuteMonitoringAfterMicrophone();
   } catch (err) {
     console.error('[liveCall] Start monitoring error:', err);
+    isMonitoring = false;
     setStatus('idle');
-    startBtn.disabled = false;
+    showMonitoringControls(false);
     updateConnectionStatus('error');
     updateSystemFeedback('Error: ' + err.message);
   }
@@ -225,8 +302,9 @@ async function startMonitoring() {
  */
 async function continuteMonitoringAfterMicrophone() {
   try {
-    startBtn.disabled = true;
-    if (testBtn) testBtn.disabled = true;
+    isMonitoring = true;
+    isStopping = false;
+    showMonitoringControls(true);
 
     // Show instruction banner
     instructionBanner.textContent = 'Please put your phone on speaker now';
@@ -236,7 +314,7 @@ async function continuteMonitoringAfterMicrophone() {
     try {
       if ('wakeLock' in navigator) {
         wakeLock = await navigator.wakeLock.request('screen');
-        updateSystemFeedback('✓ Screen wake lock activated');
+        updateSystemFeedback('Screen wake lock activated');
       }
     } catch (e) {
       console.log('[liveCall] Wake lock not available');
@@ -254,10 +332,10 @@ async function continuteMonitoringAfterMicrophone() {
 
     // Add connection timeout
     const connectionTimeout = setTimeout(() => {
-      if (ws.readyState === WebSocket.CONNECTING) {
+      if (ws && ws.readyState === WebSocket.CONNECTING) {
         console.error('[liveCall] WebSocket connection timeout');
-        updateSystemFeedback('❌ Connection timeout. Server may be offline.');
-        ws.close();
+        updateSystemFeedback('Connection timeout. Server may be offline.');
+        stopMonitoring('Connection timeout. Server may be offline.', { requestFinal: false });
       }
     }, 5000); // 5 second timeout
 
@@ -265,7 +343,7 @@ async function continuteMonitoringAfterMicrophone() {
       clearTimeout(connectionTimeout);
       console.log('[liveCall] WebSocket connected, readyState:', ws.readyState);
       updateConnectionStatus('connected');
-      updateSystemFeedback('✓ Connected and monitoring');
+      updateSystemFeedback('Connected and monitoring');
       
       // 5. Send init message
       const initMsg = JSON.stringify({
@@ -284,42 +362,37 @@ async function continuteMonitoringAfterMicrophone() {
 
       // 7. On data available, send to WebSocket
       recorder.ondataavailable = (event) => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        if (isMonitoring && !isStopping && event.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
           console.log('[liveCall] Sending audio chunk, size:', event.data.size);
           ws.send(event.data);
-          updateSystemFeedback('📡 Audio data sent');
+          updateSystemFeedback('Audio data sent');
         } else {
-          console.warn('[liveCall] WebSocket not open, cannot send audio. readyState:', ws.readyState);
+          console.warn('[liveCall] WebSocket not open, cannot send audio. readyState:', ws ? ws.readyState : 'none');
         }
       };
 
       recorder.start(3000); // Emit data every 3 seconds
       isMonitoring = true;
-      stopBtn.disabled = false;
-      stopBtn.style.display = 'flex';
-      startBtn.style.display = 'none';
+      showMonitoringControls(true);
       transcriptPanel.style.display = 'block';
     };
 
     ws.onerror = (event) => {
       console.error('[liveCall] WebSocket error event:', event);
-      console.error('[liveCall] WebSocket readyState:', ws.readyState);
+      console.error('[liveCall] WebSocket readyState:', ws ? ws.readyState : 'none');
       console.error('[liveCall] WebSocket URL attempted:', wsUrl);
       updateConnectionStatus('error');
-      updateSystemFeedback('❌ Server connection failed. Check console (F12) for details.');
-      alert('Connection failed:\nOpen DevTools (F12) → Console tab to see error details.\nCheck if server is running on port 3000.');
+      stopMonitoring('Connection failed. Please make sure the server is running, then start again.', { requestFinal: false });
     };
 
     ws.onclose = (event) => {
       clearTimeout(connectionTimeout);
       console.log('[liveCall] WebSocket closed, code:', event.code, 'reason:', event.reason);
       console.log('[liveCall] Clean close?', event.wasClean);
-      if (isMonitoring) {
-        updateConnectionStatus('idle');
-        updateSystemFeedback('Monitoring stopped');
+      if (isMonitoring && !isStopping && event.code !== 1000) {
+        stopMonitoring(event.reason || 'Connection closed unexpectedly.', { requestFinal: false });
       }
     };
-
     // Open EventSource for live verdict
     sse = new EventSource(`/api/live-verdict/${sessionId}`);
 
@@ -327,6 +400,9 @@ async function continuteMonitoringAfterMicrophone() {
       try {
         const verdict = JSON.parse(event.data);
         updateVerdictDisplay(verdict);
+        if (verdict.final && finalVerdictResolver) {
+          finalVerdictResolver(verdict);
+        }
       } catch (e) {
         console.error('[liveCall] Failed to parse verdict:', e);
       }
@@ -339,8 +415,9 @@ async function continuteMonitoringAfterMicrophone() {
   } catch (err) {
     console.error('[liveCall] Start monitoring error:', err);
     alert('Error starting monitor: ' + err.message);
+    isMonitoring = false;
     setStatus('idle');
-    startBtn.disabled = false;
+    showMonitoringControls(false);
     updateConnectionStatus('error');
     updateSystemFeedback('Failed to start monitoring');
   }
@@ -349,27 +426,39 @@ async function continuteMonitoringAfterMicrophone() {
 /**
  * Stop monitoring call
  */
-async function stopMonitoring() {
-  isMonitoring = false;
+async function stopMonitoring(message = 'Monitoring stopped', options = {}) {
+  const requestFinal = options.requestFinal !== false && ws && ws.readyState === WebSocket.OPEN;
+  isStopping = true;
   setStatus('idle');
   instructionBanner.style.display = 'none';
   microphoneIndicator.style.display = 'none';
-  startBtn.disabled = false;
-  startBtn.style.display = 'flex';
-  stopBtn.disabled = true;
-  stopBtn.style.display = 'none';
+  showMonitoringControls(false);
   updateConnectionStatus('idle');
-  updateSystemFeedback('Monitoring stopped');
+  updateSystemFeedback(requestFinal ? 'Finalizing transcript and scam analysis...' : message);
 
-  if (recorder && recorder.state !== 'inactive') {
+  if (requestFinal) {
+    await stopRecorderAndFlush();
+    const finalVerdictPromise = waitForFinalVerdict();
+    ws.send(JSON.stringify({ type: 'stop' }));
+    const finalVerdict = await finalVerdictPromise;
+    if (!finalVerdict) {
+      updateSystemFeedback('Stopped. Final analysis timed out, but the latest transcript remains below.');
+    }
+    if (sse) {
+      sse.close();
+    }
+  } else if (recorder && recorder.state !== 'inactive') {
+    recorder.ondataavailable = null;
     recorder.stop();
   }
+
+  isMonitoring = false;
 
   if (ws) {
     ws.close();
   }
 
-  if (sse) {
+  if (sse && !requestFinal) {
     sse.close();
   }
 
@@ -384,23 +473,32 @@ async function stopMonitoring() {
       console.log('[liveCall] Wake lock release error:', e.message);
     }
   }
+
+  recorder = null;
+  stream = null;
+  ws = null;
+  sse = null;
+  wakeLock = null;
+  isStopping = false;
 }
 
 /**
  * Update verdict display with new data
  */
 function updateVerdictDisplay(verdict) {
-  const { riskLevel, transcript, advice, scamType } = verdict;
+  const { riskLevel, transcript, advice, scamType, final, transcriptOnly } = verdict;
 
-  setStatus('analysing');
+  if (!transcriptOnly) {
+    setStatus('analysing');
+  }
 
   // Update transcript panel
   if (transcript) {
     const lines = transcript.split('\n').filter((l) => l.trim());
-    const lastTen = lines.slice(-10);
+    const visibleLines = final ? lines : lines.slice(-10);
     transcriptPanel.innerHTML = '';
 
-    lastTen.forEach((line) => {
+    visibleLines.forEach((line) => {
       const div = document.createElement('div');
       div.style.marginBottom = '4px';
       div.style.fontFamily = 'monospace';
@@ -421,7 +519,17 @@ function updateVerdictDisplay(verdict) {
 
     transcriptPanel.scrollTop = transcriptPanel.scrollHeight;
     transcriptPanel.style.display = 'block';
-    updateSystemFeedback('📝 Transcription received');
+    updateSystemFeedback(final ? 'Final transcript and scam analysis ready' : 'Transcription received');
+  } else if (final) {
+    transcriptPanel.innerHTML = '';
+    const div = document.createElement('div');
+    div.textContent = 'No speech was transcribed.';
+    transcriptPanel.appendChild(div);
+    transcriptPanel.style.display = 'block';
+  }
+
+  if (transcriptOnly) {
+    return;
   }
 
   // Update risk badge
@@ -430,35 +538,41 @@ function updateVerdictDisplay(verdict) {
   if (riskLevel === 'SAFE' || riskLevel === 'LOW') {
     riskBadge.style.backgroundColor = '#28a745';
     riskBadge.style.animation = 'none';
-    riskBadge.textContent = '✓ Safe';
-    advicePanel.style.display = 'none';
-    updateSystemFeedback('✓ This conversation appears safe');
-    setStatus('listening');
+    riskBadge.textContent = final ? 'Final Result: Safe' : 'Safe';
+    if (final && advice) {
+      advicePanel.style.display = 'block';
+      advicePanel.style.backgroundColor = '#d4edda';
+      advicePanel.innerHTML = `<strong>Analysis:</strong><br>${advice}`;
+    } else {
+      advicePanel.style.display = 'none';
+    }
+    updateSystemFeedback(final ? 'Final analysis complete: this conversation appears safe' : 'This conversation appears safe');
+    setStatus(final ? 'idle' : 'listening');
   } else if (riskLevel === 'MEDIUM') {
     riskBadge.style.backgroundColor = '#ffc107';
     riskBadge.style.animation = 'none';
     riskBadge.style.color = '#000';
-    riskBadge.textContent = '⚠️ Suspicious Activity Detected';
+    riskBadge.textContent = final ? 'Final Result: Suspicious Activity Detected' : 'Suspicious Activity Detected';
     advicePanel.style.display = 'block';
     advicePanel.style.backgroundColor = '#fff3cd';
-    advicePanel.innerHTML = `<strong>⚠️ Advice:</strong><br>${advice || 'Be cautious with this caller'}`;
-    updateSystemFeedback('⚠️ Suspicious pattern detected');
-    setStatus('analysing');
+    advicePanel.innerHTML = `<strong>Advice:</strong><br>${advice || 'Be cautious with this caller'}`;
+    updateSystemFeedback(final ? 'Final analysis complete: suspicious pattern detected' : 'Suspicious pattern detected');
+    setStatus(final ? 'idle' : 'analysing');
   } else if (riskLevel === 'HIGH') {
     riskBadge.style.backgroundColor = '#dc3545';
     riskBadge.style.animation = 'pulse 1s infinite';
     riskBadge.style.color = '#fff';
-    riskBadge.textContent = '🚨 SCAM DETECTED! DANGER!';
+    riskBadge.textContent = final ? 'Final Result: SCAM DETECTED! DANGER!' : 'SCAM DETECTED! DANGER!';
     advicePanel.style.display = 'block';
     advicePanel.style.backgroundColor = '#f8d7da';
     advicePanel.innerHTML = `
-      <strong>🚨 WARNING:</strong><br>
+      <strong>WARNING:</strong><br>
       Scam Type: ${scamType || 'Unknown'}<br>
       <br>
       ${advice || 'Do not share personal information or money'}<br><br>
       ${
         guardianPhone
-          ? `<button id="emergencyCallBtn" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">📞 Call Guardian</button>`
+          ? `<button id="emergencyCallBtn" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">Call Guardian</button>`
           : ''
       }
     `;
@@ -472,7 +586,7 @@ function updateVerdictDisplay(verdict) {
       }, 0);
     }
 
-    updateSystemFeedback('🚨 HIGH RISK SCAM DETECTED');
+    updateSystemFeedback(final ? 'Final analysis complete: HIGH RISK SCAM DETECTED' : 'HIGH RISK SCAM DETECTED');
     setStatus('alert');
   }
 }

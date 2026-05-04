@@ -12,9 +12,19 @@
 
 const { createSTTStream } = require('./sttStream');
 const { getBuffer, removeBuffer } = require('./transcriptBuffer');
-const { pushVerdict, removeClient } = require('./verdictBroadcaster');
+const { pushVerdict } = require('./verdictBroadcaster');
 const { analyseText } = require('./text');
 const { notifyGuardians } = require('./guardian');
+const WS_OPEN = 1;
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function mapRiskLevel(verdict) {
+  return verdict.risk_level === 'HIGH'
+    ? 'HIGH'
+    : verdict.risk_level === 'MEDIUM'
+    ? 'MEDIUM'
+    : 'LOW';
+}
 
 /**
  * Setup WebSocket route for live call monitoring
@@ -30,7 +40,11 @@ function setupLiveCallWS(app) {
     let guardianPhone = null;
     let sttStream = null;
     let sttStreamReady = false;  // Track if STT stream is usable
+    let closing = false;
+    let finalizing = false;
     let buffer = null;
+    let latestInterim = null;
+    let sttClosedResolve = null;
 
     console.log('[ws-live-call] ✓ New WebSocket connection established!');
     console.log('[ws-live-call] Connection headers:', {
@@ -38,6 +52,85 @@ function setupLiveCallWS(app) {
       'connection': req.headers.connection,
       'origin': req.headers.origin
     });
+
+    async function analyzeAndPushTranscript(isFinal = false) {
+      if (!buffer || !sessionId) {
+        return null;
+      }
+
+      const transcript = buffer.getRecent();
+      if (!transcript) {
+        if (latestInterim?.text) {
+          buffer.append(latestInterim.speakerLabel || 'Unknown', latestInterim.text);
+          latestInterim = null;
+          return analyzeAndPushTranscript(isFinal);
+        }
+
+        if (isFinal) {
+          pushVerdict(sessionId, {
+            type: 'final',
+            final: true,
+            riskLevel: 'LOW',
+            scamType: null,
+            transcript: '',
+            advice: 'No speech was transcribed. Please try again with the phone audio louder or closer to the microphone.',
+          });
+        }
+        return null;
+      }
+
+      let verdict;
+      try {
+        const analysisPhone = `live-call-${sessionId.substring(0, 8)}`;
+        verdict = await analyseText(analysisPhone, transcript, true);
+      } catch (err) {
+        console.error(
+          `[ws-live-call] ${sessionId} Analysis error:`,
+          err.message
+        );
+        if (isFinal) {
+          pushVerdict(sessionId, {
+            type: 'final',
+            final: true,
+            riskLevel: 'LOW',
+            scamType: null,
+            transcript,
+            advice: 'Transcript captured, but final AI scam analysis failed. Please review the transcript manually.',
+          });
+        }
+        return null;
+      }
+
+      const riskLevel = mapRiskLevel(verdict);
+      pushVerdict(sessionId, {
+        type: isFinal ? 'final' : 'update',
+        final: isFinal,
+        riskLevel,
+        scamType: verdict.scam_type || null,
+        transcript,
+        advice: verdict.reason_en || verdict.reason_bm || null,
+        confidence: verdict.confidence || 0,
+      });
+
+      if (riskLevel === 'HIGH' && !guardianAlertSent) {
+        guardianAlertSent = true;
+        if (guardianPhone) {
+          try {
+            console.log(
+              `[ws-live-call] ${sessionId} Sending guardian alert to ${guardianPhone}`
+            );
+            await notifyGuardians(guardianPhone, verdict.scam_type);
+          } catch (err) {
+            console.error(
+              '[ws-live-call] Guardian alert failed:',
+              err.message
+            );
+          }
+        }
+      }
+
+      return verdict;
+    }
 
     /**
      * Message handler: init or audio data
@@ -76,81 +169,34 @@ function setupLiveCallWS(app) {
 
           // Create STT stream with callbacks
           sttStream = createSTTStream(
-            async (speakerLabel, text) => {
+            async (speakerLabel, text, isFinal) => {
               // Callback: new transcript segment from STT
               console.log(
-                `[ws-live-call] ${sessionId} | ${speakerLabel}: ${text.substring(0, 50)}...`
+                `[ws-live-call] ${sessionId} | ${speakerLabel}${isFinal ? '' : ' interim'}: ${text.substring(0, 50)}...`
               );
 
-              // Append to buffer
-              buffer.append(speakerLabel, text);
-
-              // Get formatted recent transcript
-              const recentTranscript = buffer.getRecent();
-              if (!recentTranscript) {
+              if (!isFinal) {
+                latestInterim = { speakerLabel, text };
+                pushVerdict(sessionId, {
+                  type: 'transcript',
+                  final: false,
+                  transcriptOnly: true,
+                  transcript: buffer.getRecent() || `${speakerLabel}: ${text}`,
+                });
                 return;
               }
 
-              // Analyze with Gemini
-              let verdict;
-              try {
-                // Call analyseText with batchMode=true to suppress auto-sending
-                // Use a dummy phone number for the session
-                const analysisPhone = `live-call-${sessionId.substring(0, 8)}`;
-                verdict = await analyseText(
-                  analysisPhone,
-                  recentTranscript,
-                  true, // batchMode
-                  'ms-MY' // Force Malay
-                );
-              } catch (err) {
-                console.error(
-                  `[ws-live-call] ${sessionId} Analysis error:`,
-                  err.message
-                );
-                return; // Fail silently, try again on next chunk
-              }
+              latestInterim = null;
+              buffer.append(speakerLabel, text);
 
-              // Map verdict to riskLevel (camelCase for frontend)
-              const riskLevel =
-                verdict.risk_level === 'HIGH'
-                  ? 'HIGH'
-                  : verdict.risk_level === 'MEDIUM'
-                  ? 'MEDIUM'
-                  : 'LOW';
-
-              // Push verdict to SSE client
-              pushVerdict(sessionId, {
-                riskLevel,
-                scamType: verdict.scam_type || null,
-                transcript: recentTranscript,
-                advice: verdict.reason_bm || null, // Use Malay reason
-              });
-
-              // Send guardian alert once if HIGH
-              if (riskLevel === 'HIGH' && !guardianAlertSent) {
-                guardianAlertSent = true;
-                if (guardianPhone) {
-                  try {
-                    console.log(
-                      `[ws-live-call] ${sessionId} Sending guardian alert to ${guardianPhone}`
-                    );
-                    await notifyGuardians(guardianPhone, verdict.scam_type);
-                  } catch (err) {
-                    console.error(
-                      '[ws-live-call] Guardian alert failed:',
-                      err.message
-                    );
-                  }
-                }
-              }
+              await analyzeAndPushTranscript(false);
             },
             (err) => {
               // Error callback from STT
               console.error(`[ws-live-call] ${sessionId} STT error:`, err.message);
               sttStreamReady = false;  // Mark stream as no longer usable
               // Close WebSocket on fatal STT error
-              if (ws.readyState === WebSocket.OPEN) {
+              if (ws.readyState === WS_OPEN) {
                 ws.close(1011, 'STT stream error: ' + err.message);
               }
             }
@@ -158,10 +204,55 @@ function setupLiveCallWS(app) {
 
           initReceived = true;
           sttStreamReady = true;  // Mark stream as ready
+          sttStream.once('close', () => {
+            if (sttClosedResolve) {
+              sttClosedResolve();
+              sttClosedResolve = null;
+            }
+          });
           console.log(
             `[ws-live-call] ${sessionId} STT stream initialized, ready for audio`
           );
           return;
+        }
+
+        if (initReceived && typeof message === 'string') {
+          let controlMsg = null;
+          try {
+            controlMsg = JSON.parse(message);
+          } catch (e) {
+            controlMsg = null;
+          }
+
+          if (controlMsg?.type === 'stop') {
+            if (finalizing) {
+              return;
+            }
+
+            finalizing = true;
+            console.log(`[ws-live-call] ${sessionId} Stop requested, running final analysis`);
+
+            if (sttStream && sttStream.isUsable?.()) {
+              try {
+                sttStream.end();
+              } catch (err) {
+                console.error(`[ws-live-call] ${sessionId} Error ending STT stream:`, err.message);
+              }
+            }
+            sttStreamReady = false;
+
+            await Promise.race([
+              new Promise((resolve) => {
+                sttClosedResolve = resolve;
+              }),
+              delay(5000),
+            ]);
+            await analyzeAndPushTranscript(true);
+            if (ws.readyState === WS_OPEN) {
+              ws.close(1000, 'Monitoring stopped');
+            }
+            return;
+          }
         }
 
         // Subsequent messages are audio data
@@ -172,7 +263,7 @@ function setupLiveCallWS(app) {
           return;
         }
 
-        if (!sttStream || !sttStreamReady) {
+        if (closing || !sttStream || !sttStreamReady || !sttStream.isUsable?.()) {
           console.warn('[ws-live-call] STT stream not ready, cannot write audio');
           return;
         }
@@ -183,7 +274,9 @@ function setupLiveCallWS(app) {
         } catch (writeErr) {
           console.error(`[ws-live-call] ${sessionId} Failed to write audio:`, writeErr.message);
           sttStreamReady = false;
-          ws.close(1011, 'Failed to write audio to STT');
+          if (ws.readyState === WS_OPEN) {
+            ws.close(1011, 'Failed to write audio to STT');
+          }
         }
       } catch (err) {
         console.error('[ws-live-call] Message handler error:', err);
@@ -195,9 +288,10 @@ function setupLiveCallWS(app) {
      */
     ws.on('close', () => {
       console.log(`[ws-live-call] ${sessionId} WebSocket closed`);
+      closing = true;
 
       // Cleanup - properly end the STT stream
-      if (sttStream && sttStreamReady) {
+      if (sttStream && sttStream.isUsable?.()) {
         try {
           sttStream.end();
         } catch (err) {
@@ -207,10 +301,7 @@ function setupLiveCallWS(app) {
       sttStreamReady = false;
       
       if (buffer) {
-        removeBuffer(sessionId);
-      }
-      if (sessionId) {
-        removeClient(sessionId);
+        setTimeout(() => removeBuffer(sessionId), 30000);
       }
     });
 

@@ -11,6 +11,7 @@ const COMMANDS = {
   '/mula':   { handler: handleStart, lang: 'en' },
   '/analisis': { handler: handleAnalyze, lang: 'en' },
   '/batalkan':  { handler: handleCancel, lang: 'en' },
+  '/panggilan': { handler: handleLiveCall, lang: 'en' },
   '/start':    { handler: handleStart, lang: 'en' },
   '/register': { handler: handleRegister, lang: 'en' },
   '/family':     { handler: handleLink, lang: 'en' },
@@ -19,6 +20,9 @@ const COMMANDS = {
   '/begin':    { handler: handleStart, lang: 'en' },
   '/analyze':  { handler: handleAnalyze, lang: 'en' },
   '/scan':     { handler: handleAnalyze, lang: 'en' },
+  '/live':     { handler: handleLiveCall, lang: 'en' },
+  '/call':     { handler: handleLiveCall, lang: 'en' },
+  '/monitor':  { handler: handleLiveCall, lang: 'en' },
   '/stop':     { handler: handleCancel, lang: 'en' },
 };
 
@@ -116,6 +120,7 @@ async function handleHelp(from, args, lang = 'en') {
     `/analyze — Analyze all collected messages, images & audio\n` +
     `/stop — Cancel batch mode\n\n` +
     `OTHER COMMANDS:\n` +
+    `/live - Open real-time phone call monitoring\n` +
     `/register — Register a family member as Guardian\n` +
     `/link [code] — Become a Guardian for family member\n` +
     `/info — View your registered Guardians\n` +
@@ -134,6 +139,7 @@ async function handleHelp(from, args, lang = 'en') {
     `/analyze — Analyze all collected messages, images & audio\n` +
     `/stop — Cancel batch mode\n\n` +
     `OTHER COMMANDS:\n` +
+    `/live - Open real-time phone call monitoring\n` +
     `/register — Register a family member as Guardian\n` +
     `/link [code] — Become a Guardian for family member\n` +
     `/info — View your registered Guardians\n` +
@@ -207,6 +213,34 @@ async function handleCancel(from, args, lang = 'en') {
   };
 
   await sendMessage(from, messages[lang] || messages.bm);
+}
+
+function getLiveCallUrl() {
+  const baseUrl =
+    process.env.PUBLIC_BASE_URL ||
+    process.env.APP_BASE_URL ||
+    process.env.WEB_BASE_URL ||
+    `http://localhost:${process.env.PORT || 8080}`;
+
+  return `${baseUrl.replace(/\/$/, '')}/live-call.html`;
+}
+
+async function handleLiveCall(from, args, lang = 'en') {
+  const url = getLiveCallUrl();
+  const messages = {
+    bm:
+      `Live Call Companion\n\n` +
+      `Open this link before or during a suspicious phone call:\n${url}\n\n` +
+      `Tap Start Monitoring, allow microphone access, and put the phone call on speaker. The button will change to Stop Monitoring so you can stop anytime.\n\n` +
+      `For WhatsApp voice notes, just forward the audio here and I will analyze it directly.`,
+    en:
+      `Live Call Companion\n\n` +
+      `Open this link before or during a suspicious phone call:\n${url}\n\n` +
+      `Tap Start Monitoring, allow microphone access, and put the phone call on speaker. The button will change to Stop Monitoring so you can stop anytime.\n\n` +
+      `For WhatsApp voice notes, just forward the audio here and I will analyze it directly.`,
+  };
+
+  await sendMessage(from, messages[lang] || messages.en);
 }
 
 module.exports = { handleCommand };

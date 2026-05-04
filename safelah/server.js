@@ -850,8 +850,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 
 // Setup startup timeout
 const startupTimeout = setTimeout(() => {
-  console.error('[server] Startup timeout - process exiting');
-  process.exit(1);
+  console.warn('[server] Background startup is taking longer than expected; keeping Web UI online');
 }, 30000); // 30 second timeout
 
 // Initialize background tasks after server starts
@@ -860,6 +859,7 @@ const startupTimeout = setTimeout(() => {
     console.log('[server] Initializing database...');
     await dbReady;
     console.log('[server] Database ready');
+    clearTimeout(startupTimeout);
 
     // Auto-detect Cloud Run (K_SERVICE is always set) or honour SKIP_WHATSAPP
     const skipWA = process.env.SKIP_WHATSAPP === 'true' || !!process.env.K_SERVICE;
