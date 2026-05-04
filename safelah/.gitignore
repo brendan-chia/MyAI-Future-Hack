@@ -3,9 +3,6 @@ node_modules/
 # Environment files
 .env
 .env.*
-!.env.example
-safelah/gen-lang-client-0571774162-6868eb36fa06.json
-safelah/safelah-f9a98bc2faff.json
 
 # Local databases
 *.db
