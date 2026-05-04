@@ -1,10 +1,10 @@
 const { analyseAudioWithGemini }  = require('./gemini');
-const { sendMessage, downloadMedia } = require('./whatsapp');
-const { buildVerdict }            = require('./verdictBuilder');
+const { sendMessage, downloadMedia } = require('../whatsapp');
+const { buildVerdict }            = require('../verdictBuilder');
 const { runScamDetectionFlow }    = require('./text');
-const { detectLanguage }          = require('./language');
-const { notifyGuardians }         = require('./guardian');
-const { logScamIntelligence }     = require('./queries');
+const { detectLanguage }          = require('../language');
+const { notifyGuardians }         = require('../guardian');
+const { logScamIntelligence }     = require('../queries');
 
 async function analyseAudio(from, message) {
   try {

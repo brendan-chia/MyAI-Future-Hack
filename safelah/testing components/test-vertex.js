@@ -4,7 +4,7 @@
  */
 require('dotenv').config();
 
-const { searchVertexAI, searchPhone, searchBankAccount } = require('./vertexSearch');
+const { searchVertexAI, searchPhone, searchBankAccount } = require('../services/vertexSearch');
 
 async function main() {
   console.log('=== Vertex AI Search Connection Test ===\n');

@@ -1,10 +1,10 @@
 const { extractTextFromImage, analyseImageWithGemini } = require('./gemini');
-const { sendMessage, downloadMedia } = require('./whatsapp');
-const { buildVerdict }       = require('./verdictBuilder');
+const { sendMessage, downloadMedia } = require('../whatsapp');
+const { buildVerdict }       = require('../verdictBuilder');
 const { runScamDetectionFlow } = require('./text');
-const { detectLanguage }     = require('./language');
+const { detectLanguage }     = require('../language');
 const { notifyGuardians }    = require('./guardian');
-const { logScamIntelligence } = require('./queries');
+const { logScamIntelligence } = require('../queries');
 
 /**
  * Two-stage image analysis:
