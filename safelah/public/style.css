@@ -188,6 +188,65 @@ body {
   color: #ef5350;
 }
 
+/* ── Call buttons ───────────────────────────────────────────────────────────── */
+.call-start-btn, .call-end-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.1s;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.call-start-btn {
+  background: rgba(76, 175, 80, 0.12);
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+.call-start-btn:hover {
+  background: rgba(76, 175, 80, 0.22);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #66bb6a;
+  transform: scale(1.05);
+}
+
+.call-start-btn:active {
+  transform: scale(0.98);
+}
+
+.call-end-btn {
+  background: rgba(229, 57, 53, 0.12);
+  border-color: rgba(229, 57, 53, 0.3);
+  color: #e53935;
+  animation: callPulse 2s ease-in-out infinite;
+}
+
+.call-end-btn:hover {
+  background: rgba(229, 57, 53, 0.22);
+  border-color: rgba(229, 57, 53, 0.5);
+  color: #e74c3c;
+}
+
+.call-end-btn:active {
+  transform: scale(0.98);
+}
+
+@keyframes callPulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 0 4px rgba(229, 57, 53, 0);
+  }
+}
+
 /* ── Chat area ─────────────────────────────────────────────────────────────── */
 .chat-area {
   flex: 1;

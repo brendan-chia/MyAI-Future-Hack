@@ -10,6 +10,10 @@ const { initializeWhatsApp, getClient } = require('./whatsapp');
 
 const app = express();
 
+// ── Initialize express-ws EARLY (before middleware) ─────────────────────────
+const expressWs = require('express-ws')(app);
+console.log('[server] express-ws initialized');
+
 // ── Core Middleware ─────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -846,8 +850,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 
 // Setup startup timeout
 const startupTimeout = setTimeout(() => {
-  console.error('[server] Startup timeout - process exiting');
-  process.exit(1);
+  console.warn('[server] Background startup is taking longer than expected; keeping Web UI online');
 }, 30000); // 30 second timeout
 
 // Initialize background tasks after server starts
@@ -856,6 +859,7 @@ const startupTimeout = setTimeout(() => {
     console.log('[server] Initializing database...');
     await dbReady;
     console.log('[server] Database ready');
+    clearTimeout(startupTimeout);
 
     // Auto-detect Cloud Run (K_SERVICE is always set) or honour SKIP_WHATSAPP
     const skipWA = process.env.SKIP_WHATSAPP === 'true' || !!process.env.K_SERVICE;
@@ -904,3 +908,26 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   console.error('[server] Unhandled rejection:', reason);
 });
+
+// ── Live Call Companion feature ──────────────────────────────────────────────
+// NOTE: Cloud Run service must be deployed with --timeout=3600 for WebSocket
+// sessions to survive long calls. Add this flag to your gcloud run deploy cmd.
+// NOTE: getUserMedia() requires HTTPS. Cloud Run provides HTTPS by default.
+
+const { setupLiveCallWS } = require('./ws');
+const { registerClient, removeClient } = require('./verdictBroadcaster');
+
+// SSE endpoint — phone polls this to receive live verdicts
+app.get('/api/live-verdict/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  registerClient(sessionId, res);
+  req.on('close', () => removeClient(sessionId));
+});
+
+// Register WebSocket handler
+setupLiveCallWS(app);
+// ── End Live Call Companion ──────────────────────────────────────────────────
