@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { initializeWhatsApp, sendMessage } = require('./whatsapp');
+const { initializeWhatsApp, sendMessage } = require('../whatsapp');
 
 // Usage: node test-send.js 60123456789
 // Sends a test message to the specified phone number

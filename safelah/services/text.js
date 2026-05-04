@@ -1,14 +1,14 @@
 const { analyseWithGemini }  = require('./gemini');
-const { checkSemakMule }     = require('./semakmule');
+const { checkSemakMule }     = require('../external integration/semakmule');
 const { searchVertexAI }     = require('./vertexSearch');
-const { scanUrl }            = require('./virustotal');
-const { sendMessage }        = require('./whatsapp');
-const { keywordAnalyse }     = require('./keywordFallback');
-const { buildVerdict }       = require('./verdictBuilder');
-const { extractEntities }    = require('./extractor');
-const { detectLanguage }     = require('./language');
-const { notifyGuardians }    = require('./guardian');
-const { logScamIntelligence } = require('./queries');
+const { scanUrl }            = require('../external integration/virustotal');
+const { sendMessage }        = require('../whatsapp');
+const { keywordAnalyse }     = require('../keywordFallback');
+const { buildVerdict }       = require('../verdictBuilder');
+const { extractEntities }    = require('../extractor');
+const { detectLanguage }     = require('../language');
+const { notifyGuardians }    = require('../guardian');
+const { logScamIntelligence } = require('../queries');
 const { ai }                = require('./gemini');
 const { z }                 = require('zod');
 

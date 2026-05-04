@@ -914,8 +914,8 @@ process.on('unhandledRejection', (reason) => {
 // sessions to survive long calls. Add this flag to your gcloud run deploy cmd.
 // NOTE: getUserMedia() requires HTTPS. Cloud Run provides HTTPS by default.
 
-const { setupLiveCallWS } = require('./ws');
-const { registerClient, removeClient } = require('./verdictBroadcaster');
+const { setupLiveCallWS } = require('./live call/ws');
+const { registerClient, removeClient } = require('./live call/verdictBroadcaster');
 
 // SSE endpoint — phone polls this to receive live verdicts
 app.get('/api/live-verdict/:sessionId', (req, res) => {

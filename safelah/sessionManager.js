@@ -1,10 +1,10 @@
-const { analyseText } = require('./text');
+const { analyseText } = require('./services/text');
 const { sendMessage } = require('./whatsapp');
 const { notifyGuardians } = require('./guardian');
 const { buildVerdict } = require('./verdictBuilder');
 const { logScamIntelligence, getBatchMessages, saveClarificationAnswer, getClarificationAnswers, clearBatchSession } = require('./queries');
 const { extractEntities } = require('./extractor');
-const { analyseConversationWithGemini, analyseImageWithGemini } = require('./gemini');
+const { analyseConversationWithGemini, analyseImageWithGemini } = require('./services/gemini');
 const { keywordAnalyse } = require('./keywordFallback');
 const { inferSenderType } = require('./messageExtractor');
 

@@ -1,7 +1,7 @@
 const { spawnSync } = require('child_process');
 const speech = require('@google-cloud/speech');
 const ffmpegPath = require('ffmpeg-static');
-const { downloadMedia } = require('./whatsapp');
+const { downloadMedia } = require('../whatsapp');
 
 const client = new speech.SpeechClient();
 
