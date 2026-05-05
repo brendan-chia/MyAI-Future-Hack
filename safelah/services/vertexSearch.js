@@ -1,11 +1,14 @@
 /**
  * vertexSearch.js — Vertex AI Search (Discovery Engine) integration
  *
- * Queries the SafeLah scam data store for matching records.
+ * Queries AND writes to the SafeLah scam data store.
  * Used as an additional enrichment layer alongside CCID Semak Mule.
  */
 
-const { SearchServiceClient } = require('@google-cloud/discoveryengine').v1;
+const {
+  SearchServiceClient,
+  DocumentServiceClient,
+} = require('@google-cloud/discoveryengine').v1;
 
 // ── Config from .env ────────────────────────────────────────────────────────
 const PROJECT_ID   = process.env.VERTEX_PROJECT_ID   || 'safelah';
@@ -137,4 +140,80 @@ async function searchBankAccount(account) {
   return searchVertexAI(account);
 }
 
-module.exports = { searchVertexAI, searchPhone, searchBankAccount };
+module.exports = { searchVertexAI, searchPhone, searchBankAccount, createDocumentInVertexAI };
+
+// ── DocumentServiceClient (lazy singleton) ──────────────────────────────────
+let _docClient = null;
+
+function getDocClient() {
+  if (!_docClient) {
+    const opts = {};
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      opts.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    }
+    _docClient = new DocumentServiceClient(opts);
+  }
+  return _docClient;
+}
+
+/**
+ * Build the parent resource path for the datastore branch.
+ */
+function getDatastoreParent() {
+  return `projects/${PROJECT_ID}/locations/${LOCATION}/collections/default_collection/dataStores/${DATASTORE_ID}/branches/default_branch`;
+}
+
+/**
+ * Write a new scam report document to the Vertex AI datastore.
+ *
+ * @param {object} report
+ * @param {string} report.type          – 'phone' | 'url' | 'screenshot'
+ * @param {string} [report.identifier]  – phone number, account, or URL
+ * @param {string} report.scamType      – e.g. 'eWallet scam'
+ * @param {string} [report.description] – free-text description
+ * @param {string} [report.reportedBy]  – session username (anonymous if not logged in)
+ * @returns {Promise<{ success: boolean, documentId?: string, error?: string }>}
+ */
+async function createDocumentInVertexAI(report) {
+  try {
+    const client = getDocClient();
+    const parent = getDatastoreParent();
+
+    // Build a stable-ish document ID: type_sanitizedIdentifier_timestamp
+    const safePart = (report.identifier || 'unknown')
+      .replace(/[^a-zA-Z0-9]/g, '-')
+      .slice(0, 40)
+      .toLowerCase();
+    const documentId = `${report.type}-${safePart}-${Date.now()}`;
+
+    const structData = {
+      fields: {
+        report_type:  { stringValue: report.type || 'phone' },
+        identifier:   { stringValue: report.identifier || '' },
+        scam_type:    { stringValue: report.scamType || '' },
+        description:  { stringValue: report.description || '' },
+        reported_by:  { stringValue: report.reportedBy || 'anonymous' },
+        reported_at:  { stringValue: new Date().toISOString() },
+        source:       { stringValue: 'community_report_web' },
+      },
+    };
+
+    const request = {
+      parent,
+      documentId,
+      document: {
+        id: documentId,
+        structData,
+      },
+    };
+
+    console.log(`[vertex-write] Creating document "${documentId}" in datastore ${DATASTORE_ID}`);
+    const [doc] = await client.createDocument(request);
+    console.log(`[vertex-write] ✅ Document created: ${doc.name}`);
+    return { success: true, documentId };
+  } catch (err) {
+    console.error('[vertex-write] ❌ Failed to create document:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+

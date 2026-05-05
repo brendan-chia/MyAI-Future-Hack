@@ -13,8 +13,8 @@
 const { createSTTStream } = require('./sttStream');
 const { getBuffer, removeBuffer } = require('./transcriptBuffer');
 const { pushVerdict } = require('./verdictBroadcaster');
-const { analyseText } = require('../text');
-const { notifyGuardians } = require('../guardian');
+const { analyseText } = require('../services/text');
+const { notifyGuardians } = require('../services/guardian');
 const WS_OPEN = 1;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

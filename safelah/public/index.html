@@ -27,6 +27,10 @@
         <div class="status-dot"></div>
         <span class="status-text">Online</span>
         <button class="call-start-btn" id="callStartBtn" title="Start call companion" style="display:none">📞 Call</button>
+        <button class="report-btn" id="reportBtn" title="Report a scam">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          Report
+        </button>
         <button class="call-end-btn" id="callEndBtn" title="End call" style="display:none">End Call</button>
         <div class="user-badge" id="userBadge" title="Account information" style="display:none">
           <span class="user-badge-icon" id="userBadgeIcon">👤</span>
@@ -35,6 +39,17 @@
         <button class="logout-btn" id="logoutBtn" title="Log out" style="display:none">⏻</button>
       </div>
     </header>
+
+    <!-- Community report counter bar -->
+    <div class="community-bar" id="communityBar">
+      <div class="community-bar-left">
+        <span class="community-bar-dot"></span>
+        <span class="community-bar-label">Community reports</span>
+      </div>
+      <div class="community-bar-right">
+        <span class="community-bar-count"><span id="reportCount">0</span> report<span id="reportPlural">s</span> submitted</span>
+      </div>
+    </div>
 
     <!-- Chat area -->
     <main class="chat-area" id="chatArea">
@@ -102,6 +117,215 @@
     </div>
   </div>
 
+  <!-- Report Scam Modal -->
+  <div class="report-overlay" id="reportOverlay">
+    <div class="report-modal" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+
+      <!-- Modal header -->
+      <div class="report-modal-header">
+        <div class="report-modal-title-row">
+          <span class="report-modal-title" id="reportModalTitle">Report scam — form</span>
+          <span class="report-new-tab-badge">New tab</span>
+        </div>
+        <button class="report-modal-close" id="reportModalClose" title="Close">✕</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="report-tabs" role="tablist">
+        <button class="report-tab active" data-tab="phone" role="tab" aria-selected="true">Phone / account</button>
+        <button class="report-tab" data-tab="url" role="tab" aria-selected="false">URL / link</button>
+        <button class="report-tab" data-tab="screenshot" role="tab" aria-selected="false">Screenshot</button>
+      </div>
+
+      <!-- Tab: Phone / account -->
+      <div class="report-tab-content active" id="tab-phone">
+        <div class="report-field">
+          <label class="report-label" for="reportPhone">Suspicious phone or account no.</label>
+          <input class="report-input" id="reportPhone" type="text" placeholder="60000000" autocomplete="off">
+        </div>
+        <div class="report-field">
+          <label class="report-label" for="reportScamType">Scam type</label>
+          <div class="report-select-wrap">
+            <select class="report-select" id="reportScamType">
+              <option>eWallet scam</option>
+              <option>Banking scam</option>
+              <option>Investment scam</option>
+              <option>Job scam</option>
+              <option>Impersonation scam</option>
+              <option>Parcel scam</option>
+              <option>Love scam</option>
+              <option>Online shopping scam</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="report-field">
+          <label class="report-label" for="reportDescPhone">Description <span class="report-optional">(optional)</span></label>
+          <textarea class="report-textarea" id="reportDescPhone" placeholder="What happened? What did they say?"></textarea>
+        </div>
+      </div>
+
+      <!-- Tab: URL / link -->
+      <div class="report-tab-content" id="tab-url">
+        <div class="report-field">
+          <label class="report-label" for="reportUrl">Suspicious URL or link</label>
+          <input class="report-input" id="reportUrl" type="url" placeholder="https://..." autocomplete="off">
+        </div>
+        <div class="report-field">
+          <label class="report-label" for="reportScamTypeUrl">Scam type</label>
+          <div class="report-select-wrap">
+            <select class="report-select" id="reportScamTypeUrl">
+              <option>Phishing site</option>
+              <option>Fake e-commerce</option>
+              <option>Investment scam</option>
+              <option>Malware / ransomware</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="report-field">
+          <label class="report-label" for="reportDescUrl">Description <span class="report-optional">(optional)</span></label>
+          <textarea class="report-textarea" id="reportDescUrl" placeholder="What happened? What did they say?"></textarea>
+        </div>
+      </div>
+
+      <!-- Tab: Screenshot -->
+      <div class="report-tab-content" id="tab-screenshot">
+        <div class="report-field">
+          <label class="report-label">Upload screenshot</label>
+          <label class="report-file-drop" id="reportFileDrop">
+            <input type="file" id="reportFileInput" accept="image/*" hidden>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span id="reportFileLabel">Click or drag a screenshot here</span>
+          </label>
+        </div>
+        <div class="report-field">
+          <label class="report-label" for="reportScamTypeImg">Scam type</label>
+          <div class="report-select-wrap">
+            <select class="report-select" id="reportScamTypeImg">
+              <option>eWallet scam</option>
+              <option>Banking scam</option>
+              <option>Investment scam</option>
+              <option>Job scam</option>
+              <option>Impersonation scam</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="report-field">
+          <label class="report-label" for="reportDescImg">Description <span class="report-optional">(optional)</span></label>
+          <textarea class="report-textarea" id="reportDescImg" placeholder="What happened? What did they say?"></textarea>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button class="report-submit-btn" id="reportSubmitBtn">Submit to community database</button>
+    </div>
+  </div>
+
   <script src="chat.js"></script>
+  <script>
+  (function() {
+    const overlay   = document.getElementById('reportOverlay');
+    const openBtn   = document.getElementById('reportBtn');
+    const closeBtn  = document.getElementById('reportModalClose');
+    const submitBtn = document.getElementById('reportSubmitBtn');
+    const tabs      = document.querySelectorAll('.report-tab');
+    const contents  = document.querySelectorAll('.report-tab-content');
+
+    function openModal() {
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    openBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    // Tab switching
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+        contents.forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected','true');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // File drop label update
+    const fileInput = document.getElementById('reportFileInput');
+    fileInput && fileInput.addEventListener('change', () => {
+      const label = document.getElementById('reportFileLabel');
+      if (fileInput.files[0]) label.textContent = fileInput.files[0].name;
+    });
+
+    // Submit
+    submitBtn.addEventListener('click', async () => {
+      const activeTab = document.querySelector('.report-tab.active').dataset.tab;
+      let payload = { type: activeTab };
+      if (activeTab === 'phone') {
+        payload.identifier = document.getElementById('reportPhone').value.trim();
+        payload.scamType   = document.getElementById('reportScamType').value;
+        payload.description = document.getElementById('reportDescPhone').value.trim();
+      } else if (activeTab === 'url') {
+        payload.identifier = document.getElementById('reportUrl').value.trim();
+        payload.scamType   = document.getElementById('reportScamTypeUrl').value;
+        payload.description = document.getElementById('reportDescUrl').value.trim();
+      } else {
+        payload.scamType    = document.getElementById('reportScamTypeImg').value;
+        payload.description = document.getElementById('reportDescImg').value.trim();
+      }
+      if (!payload.identifier && activeTab !== 'screenshot') {
+        submitBtn.textContent = '⚠ Please fill in the required field';
+        setTimeout(() => { submitBtn.textContent = 'Submit to community database'; }, 2500);
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
+      try {
+        const res = await fetch('/api/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          submitBtn.textContent = '✓ Reported — thank you!';
+          // Increment community report counter
+          const countEl = document.getElementById('reportCount');
+          const pluralEl = document.getElementById('reportPlural');
+          let count = parseInt(localStorage.getItem('communityReportCount') || '0', 10) + 1;
+          localStorage.setItem('communityReportCount', count);
+          countEl.textContent = count;
+          if (pluralEl) pluralEl.textContent = count === 1 ? '' : 's';
+          // Animate the bar
+          const bar = document.getElementById('communityBar');
+          bar.classList.add('community-bar--flash');
+          setTimeout(() => bar.classList.remove('community-bar--flash'), 800);
+          setTimeout(() => { closeModal(); submitBtn.disabled = false; submitBtn.textContent = 'Submit to community database'; }, 1800);
+        } else {
+          throw new Error();
+        }
+      } catch {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '✕ Failed — please try again';
+        setTimeout(() => { submitBtn.textContent = 'Submit to community database'; }, 2500);
+      }
+    });
+    // Init counter from localStorage
+    (function initCounter() {
+      const count = parseInt(localStorage.getItem('communityReportCount') || '0', 10);
+      const countEl = document.getElementById('reportCount');
+      const pluralEl = document.getElementById('reportPlural');
+      if (countEl) countEl.textContent = count;
+      if (pluralEl) pluralEl.textContent = count === 1 ? '' : 's';
+    })();
+  })();
+  </script>
 </body>
 </html>

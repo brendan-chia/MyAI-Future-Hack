@@ -1,6 +1,6 @@
 const { analyseText } = require('./services/text');
 const { sendMessage } = require('./whatsapp');
-const { notifyGuardians } = require('./guardian');
+const { notifyGuardians } = require('./services/guardian');
 const { buildVerdict } = require('./verdictBuilder');
 const { logScamIntelligence, getBatchMessages, saveClarificationAnswer, getClarificationAnswers, clearBatchSession } = require('./queries');
 const { extractEntities } = require('./extractor');

@@ -1,7 +1,7 @@
 const { sendMessage } = require('./whatsapp');
-const { analyseText } = require('./text');
-const { analyseImage } = require('./image');
-const { analyseAudio } = require('./audio');
+const { analyseText } = require('./services/text');
+const { analyseImage } = require('./services/image');
+const { analyseAudio } = require('./services/audio');
 const { handleCommand } = require('./commands');
 const { isFirstTimeUser, checkRateLimit, getSession, addMessageToBatch, addImageToBatch, addAudioToBatch } = require('./queries');
 const { processClarificationAnswer, processClarificationAnswerForConversation } = require('./sessionManager');
@@ -122,7 +122,7 @@ async function handleIncoming(message) {
       return;
     } else if (hasMedia && (msgType === 'ptt' || msgType === 'audio')) {
       // Transcribe audio and add to batch
-      const { transcribeAudio } = require('./speech');
+      const { transcribeAudio } = require('./services/speech');
       try {
         console.log(`[batch] Processing audio for ${phone}...`);
         const transcript = await transcribeAudio(message);

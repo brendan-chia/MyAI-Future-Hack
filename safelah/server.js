@@ -331,7 +331,7 @@ app.post('/api/analyse', async (req, res) => {
     }
 
     const from = sessionId || req.session?.username || 'web-user';
-    const { analyseTextDirect } = require('./text');
+    const { analyseTextDirect } = require('./services/text');
     const result = await analyseTextDirect(from, text);
 
     // If user is logged-in and has a guardian, push alert for HIGH/MEDIUM
@@ -396,7 +396,7 @@ app.post('/api/flow', async (req, res) => {
       return res.status(400).json({ error: 'No text provided' });
     }
 
-    const { runScamDetectionFlow } = require('./text');
+    const { runScamDetectionFlow } = require('./services/text');
     const result = await runScamDetectionFlow({
       text: text.trim(),
       phone: sessionId || 'web-user',
@@ -433,7 +433,7 @@ app.post('/api/analyse-image', async (req, res) => {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     const mime = mimeType || 'image/jpeg';
 
-    const result = await require('./image').analyseImageDirect(base64Data, mime);
+    const result = await require('./services/image').analyseImageDirect(base64Data, mime);
 
     // If user is logged-in and has a guardian, push alert for HIGH/MEDIUM
     let alertSent = false;
@@ -557,13 +557,13 @@ app.post('/api/analyse-batch', async (req, res) => {
       return res.status(400).json({ error: 'No messages provided' });
     }
 
-    const { extractTextFromImage, analyseConversationWithGemini } = require('./gemini');
+    const { extractTextFromImage, analyseConversationWithGemini } = require('./services/gemini');
     const { keywordAnalyse } = require('./keywordFallback');
     const { extractEntities } = require('./extractor');
     const { buildVerdict } = require('./verdictBuilder');
     const { logScamIntelligence } = require('./queries');
     const { detectLanguage } = require('./language');
-    const { runScamDetectionFlow } = require('./text');
+    const { runScamDetectionFlow } = require('./services/text');
 
     console.log(`[batch-web] Processing ${messages.length} messages from ${sessionId || 'web-user'}`);
 
@@ -630,8 +630,8 @@ app.post('/api/analyse-batch', async (req, res) => {
 
     if (checkTarget) {
       try {
-        const { checkSemakMule } = require('./semakmule');
-        const { searchVertexAI } = require('./vertexSearch');
+        const { checkSemakMule } = require('./external integration/semakmule');
+        const { searchVertexAI } = require('./services/vertexSearch');
         const category = conversationResult.extracted_phones[0] ? 'phone' : 'bank';
         const [ccid, vertex] = await Promise.all([
           checkSemakMule(checkTarget, category),
@@ -731,7 +731,7 @@ app.post('/api/search', async (req, res) => {
       return res.status(400).json({ error: 'No query provided' });
     }
 
-    const { searchVertexAI } = require('./vertexSearch');
+    const { searchVertexAI } = require('./services/vertexSearch');
     const result = await searchVertexAI(query.trim());
     res.json(result);
   } catch (err) {
@@ -840,7 +840,77 @@ app.get('/api/admin/export', adminGuard, (req, res) => {
 });
 
 
-// ── Start ───────────────────────────────────────────────────────────────────
+// ── Community scam report ────────────────────────────────────────────────────
+/**
+ * POST /api/report
+ * Body: { type, identifier, scamType, description }
+ *
+ * Saves the community report to:
+ *   1. Local SQLite DB (scam_intelligence log — for CSV export / offline resilience)
+ *   2. Vertex AI datastore (for search enrichment)
+ */
+app.post('/api/report', async (req, res) => {
+  try {
+    const { type, identifier, scamType, description } = req.body;
+
+    if (!type || !['phone', 'url', 'screenshot'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid report type' });
+    }
+    if (type !== 'screenshot' && (!identifier || !identifier.trim())) {
+      return res.status(400).json({ error: 'Identifier is required' });
+    }
+
+    const reportedBy = req.session?.username || 'anonymous';
+    const cleanId    = (identifier || '').trim();
+
+    // 1️⃣  Log locally so it shows up in admin/export CSV
+    try {
+      const { logScamIntelligence } = require('./queries');
+      logScamIntelligence({
+        scamType:  scamType  || 'UNKNOWN',
+        riskLevel: 'COMMUNITY_REPORT',
+        phones:    type === 'phone'     ? [cleanId] : [],
+        accounts:  [],
+        urls:      type === 'url'       ? [cleanId] : [],
+        confidence: 1.0,
+      });
+    } catch (dbErr) {
+      console.warn('[report] Local DB log failed (non-fatal):', dbErr.message);
+    }
+
+    // 2️⃣  Write to Vertex AI datastore
+    const { createDocumentInVertexAI } = require('./services/vertexSearch');
+    const vertexResult = await createDocumentInVertexAI({
+      type,
+      identifier: cleanId,
+      scamType:   scamType || '',
+      description: description || '',
+      reportedBy,
+    });
+
+    if (!vertexResult.success) {
+      console.warn('[report] Vertex write failed:', vertexResult.error);
+      // Still return success — local DB has the record
+      return res.json({
+        success: true,
+        warning: 'Saved locally; Vertex AI sync pending',
+        documentId: null,
+      });
+    }
+
+    console.log(`[report] ✅ Community report synced → Vertex doc ${vertexResult.documentId} by ${reportedBy}`);
+    return res.json({
+      success: true,
+      documentId: vertexResult.documentId,
+    });
+  } catch (err) {
+    console.error('[report] Unexpected error:', err.message);
+    res.status(500).json({ error: 'Report submission failed' });
+  }
+});
+
+
+// ── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 8080;
 
 // Start server IMMEDIATELY so Cloud Run health-check passes
