@@ -1,5 +1,4 @@
 const { analyseWithGemini }  = require('./gemini');
-const { checkSemakMule }     = require('../external integration/semakmule');
 const { searchVertexAI }     = require('./vertexSearch');
 const { scanUrl }            = require('../external integration/virustotal');
 const { sendMessage }        = require('../whatsapp');
@@ -108,26 +107,15 @@ const scamDetectionFlow = ai.defineFlow(
 
     result = normalizeFlowResult(result, { phones, accounts, urls });
 
-    // Layer 4 — aggregate signals: CCID Semak Mule + Vertex AI Search + VirusTotal
-    let ccidResult   = { found: false, reports: 0 };
+    // Layer 4 — aggregate signals: Vertex AI Search + VirusTotal
     let vertexResult = { found: false, hits: 0, results: [] };
     const checkTarget = (result.extracted_phones[0] || phones[0]) ||
                         (result.extracted_accounts[0] || accounts[0]);
 
     if (checkTarget) {
-      const category = (result.extracted_phones[0] || phones[0]) ? 'phone' : 'bank';
-
-      // Run CCID + Vertex AI Search in parallel for speed
-      const [ccid, vertex] = await Promise.all([
-        checkSemakMule(checkTarget, category),
-        searchVertexAI(checkTarget),
-      ]);
-      ccidResult   = ccid;
+      // Run Vertex AI Search
+      const vertex = await searchVertexAI(checkTarget);
       vertexResult = vertex;
-
-      // CCID escalation
-      if (ccidResult.found && result.risk_level === 'LOW') result.risk_level = 'MEDIUM';
-      if (ccidResult.reports >= 3)                         result.risk_level = 'HIGH';
 
       // Vertex AI Search escalation
       if (vertexResult.found && result.risk_level === 'LOW') result.risk_level = 'MEDIUM';
@@ -152,7 +140,6 @@ const scamDetectionFlow = ai.defineFlow(
       }
     }
 
-    result.ccidResult   = ccidResult;
     result.vertexResult = vertexResult;
     return result;
   }

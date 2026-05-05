@@ -69,7 +69,7 @@ const SAFETY_SETTINGS = [
 
 function getModel() {
   return genAI.getGenerativeModel({
-    model: 'gemini-3.1-flash-lite-preview',
+    model: 'gemini-2.0-flash',
     systemInstruction: SYSTEM_INSTRUCTION,
     safetySettings: SAFETY_SETTINGS,
     generationConfig: {
@@ -143,7 +143,7 @@ async function extractTextFromImage(base64Image, mimeType = 'image/jpeg', retrie
   for (let i = 0; i <= retries; i++) {
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-2.0-flash',
         safetySettings: SAFETY_SETTINGS,
         generationConfig: {
           responseMimeType: 'application/json',

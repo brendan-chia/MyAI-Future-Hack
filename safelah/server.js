@@ -630,22 +630,14 @@ app.post('/api/analyse-batch', async (req, res) => {
 
     if (checkTarget) {
       try {
-        const { checkSemakMule } = require('./external integration/semakmule');
-        const { searchVertexAI } = require('./services/vertexSearch');
-        const category = conversationResult.extracted_phones[0] ? 'phone' : 'bank';
-        const [ccid, vertex] = await Promise.all([
-          checkSemakMule(checkTarget, category),
-          searchVertexAI(checkTarget),
-        ]);
-        ccidResult = ccid;
+        const { searchVertexAI } = require('./vertexSearch');
+        const vertex = await searchVertexAI(checkTarget);
         vertexResult = vertex;
 
-        if (ccidResult.found && conversationResult.risk_level === 'LOW') conversationResult.risk_level = 'MEDIUM';
-        if (ccidResult.reports >= 3) conversationResult.risk_level = 'HIGH';
         if (vertexResult.found && conversationResult.risk_level === 'LOW') conversationResult.risk_level = 'MEDIUM';
         if (vertexResult.hits >= 3) conversationResult.risk_level = 'HIGH';
       } catch (err) {
-        console.warn('[batch-web] CCID/Vertex check failed:', err.message);
+        console.warn('[batch-web] Vertex check failed:', err.message);
       }
     }
 

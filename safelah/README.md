@@ -1,7 +1,7 @@
 # SafeLah 🛡️
 **AI scam guardian for Malaysian users**
 
-SafeLah is a web UI for analysing suspicious text, screenshots, audio, and multi-message conversations. It uses Google Gemini, PDRM Semak Mule, Vertex AI Search, and VirusTotal to return a fast scam verdict when needed.
+SafeLah is a web UI for analysing suspicious text, screenshots, audio, and multi-message conversations. It uses Google Gemini, Vertex AI Search, and VirusTotal to return a fast scam verdict when needed.
 
 ---
 
@@ -74,7 +74,7 @@ NLP      Vision   STT      analysis
     ↓       ↓        ↓        ↓
 Entity extraction + keyword fallback
           ↓
-CCID Semak Mule + Vertex AI Search + VirusTotal
+Vertex AI Search + VirusTotal
           ↓
 Verdict builder (English / Malay output)
           ↓
@@ -140,9 +140,6 @@ safelah/
 ├── commands.js            # Chat commands and batch mode handling
 ├── guardian.js            # Guardian alerts
 ├── gemini.js              # Gemini wrappers for text, image, conversation, audio
-├── semakmule.js           # CCID Semak Mule scraper
-├── vertexSearch.js        # Vertex AI Search integration
-├── virustotal.js          # URL scanner
 ├── extractor.js           # Phone/account/URL extraction
 ├── verdictBuilder.js      # Final verdict formatting
 ├── keywordFallback.js     # Offline fallback classifier
@@ -177,4 +174,4 @@ npm start
 
 - **Anti-Scam Hotline: 997** (8am–8pm daily)
 - **PDRM CCID: 03-2610 1559**
-- **CCID Semak Mule: semakmule.rmp.gov.my**
+
