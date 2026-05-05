@@ -2,7 +2,7 @@
 
 SafeLah is an AI-powered Web UI that helps Malaysian users detect scam messages quickly.
 
-It combines Gemini analysis, PDRM Semak Mule checks, Vertex AI Search enrichment, and URL threat scanning to produce clear, bilingual scam verdicts.
+It combines Gemini analysis, Vertex AI Search enrichment, and URL threat scanning to produce clear, bilingual scam verdicts.
 
 ## Live Deployment
 
@@ -25,7 +25,6 @@ This repository has two main parts:
 - Classifies likely scam type (Macau, phishing, job scam, investment scam, etc.)
 - Extracts phone numbers, bank accounts, and URLs from user input
 - Cross-checks indicators against:
-  - PDRM Semak Mule
   - Vertex AI Search knowledge base
   - VirusTotal URL reputation
 - Escalates risk level when external signals confirm suspicious indicators
@@ -37,7 +36,7 @@ This repository has two main parts:
 1. Input enters the Web UI/API (`/api/analyse`, `/api/analyse-image`, `/api/analyse-audio`, `/api/analyse-batch`, `/api/flow`)
 2. Pre-processing extracts entities and applies keyword fallback for fast high-risk short-circuiting
 3. Gemini model performs semantic scam analysis when needed
-4. Enrichment layer runs CCID + Vertex AI Search (+ VirusTotal for URLs)
+4. Enrichment layer runs Vertex AI Search (+ VirusTotal for URLs)
 5. Verdict builder composes final bilingual user-safe response
 6. Optional guardian alert is triggered for high-risk findings
 
@@ -59,7 +58,7 @@ Flow stages:
 	- Returns risk level, scam type, confidence, reasons, and extracted indicators
 
 4. **Layer 4: Signal aggregation**
-	- Queries PDRM Semak Mule and Vertex AI Search in parallel for speed
+	- Queries Vertex AI Search for enhanced context
 	- Scans URL with VirusTotal when a link exists
 	- Escalates risk level when corroborating evidence is found
 
@@ -137,12 +136,6 @@ npm start
 ├── README.md
 ├── TEST_CONVERSATIONS.md
 ├── safelah/
-│   ├── server.js
-│   ├── text.js
-│   ├── gemini.js
-│   ├── vertexSearch.js
-│   ├── semakmule.js
-│   ├── virustotal.js
 │   ├── sessionManager.js
 │   ├── guardian.js
 │   ├── connection.js

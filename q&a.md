@@ -66,7 +66,7 @@ SafeLah implements a **4-Layer Agentic Detection Flow** using Google Genkit:
 
 2. **Tested Scam Coverage:**
    - System successfully identifies all 9 Malaysian scam types
-   - Test suite includes real-world scam messages (RM5000 lucky draws, PDRM impersonation, e-commerce job scams)
+   - Test suite includes real-world scam messages (RM5000 lucky draws, impersonation attempts, e-commerce job scams)
    - Tested on multilingual inputs (Malay, English, Mandarin, Tamil)
 
 3. **Data Persistence & Session Management:**
@@ -100,9 +100,9 @@ SafeLah implements a **4-Layer Agentic Detection Flow** using Google Genkit:
 
 1. **Malaysian-First Approach:**
    - Most anti-scam apps are generic; SafeLah specifically targets 9 scam types prevalent in Malaysia
-   - Integrates with PDRM's official Semak Mule database for trusted source verification
    - Multilingual support (Malay, English, Mandarin, Tamil) 
    - Ready to deploy on WhatsApp
+   - AI-driven detection tuned for Malaysian scam patterns and cultural context
 
 2. **Family Guardian Network (Unique Feature):**
    - Unlike typical scam detection, SafeLah links elderly users to family guardians
@@ -122,7 +122,6 @@ SafeLah implements a **4-Layer Agentic Detection Flow** using Google Genkit:
    - Entity extraction (phones, accounts, URLs) feeds into multiple detection paths simultaneously
 
 5. **Real-World Database Integration:**
-   - PDRM Semak Mule integration leverages official law enforcement data
    - Vertex AI Search for self-learning from previously detected scams
    - Creates feedback loop where new scams strengthen detection over time
 
@@ -149,7 +148,6 @@ SafeLah implements a **4-Layer Agentic Detection Flow** using Google Genkit:
 3. **Agentic Workflow Transparency:**
    - Show the /flow endpoint returning detailed analysis with:
      - Gemini confidence score
-     - CCID database hits
      - Vertex AI similar scams found
      - Extracted phone numbers, URLs, accounts
    - Judges will see the orchestration of multiple detection layers
@@ -182,7 +180,7 @@ SafeLah implements a **4-Layer Agentic Detection Flow** using Google Genkit:
 
 **SafeLah's Solution:**
 1. **Instant Verification**: Users can verify suspicious messages in seconds before acting
-2. **Localized Intelligence**: Recognizes Malaysian-specific scams (Macau scam impersonating PDRM, e-commerce task scams recruiting on Shopee/Lazada, etc.)
+2. **Localized Intelligence**: Recognizes Malaysian-specific scams (impersonation attempts, e-commerce task scams recruiting on Shopee/Lazada, etc.)
 3. **Family Safety Net**: Guardians are alerted in real-time, enabling intervention before money is transferred
 4. **No Friction**: Web UI is simpler than WhatsApp bots; works on any device
 5. **Privacy-Respecting**: Elderly feel empowered, not surveilled; guardians see only risk, not the whole message content
@@ -190,7 +188,7 @@ SafeLah implements a **4-Layer Agentic Detection Flow** using Google Genkit:
 **Real Impact:**
 - Prevents a single victim from losing RM20,000+ per scam
 - Scales to protect entire family networks
-- Builds community trust through official PDRM database integration
+- Builds community trust through AI-driven detection and transparent analysis
 
 ---
 
@@ -211,7 +209,6 @@ SafeLah implements a **4-Layer Agentic Detection Flow** using Google Genkit:
    - Supports Bank Negara's digital banking security initiatives and national fintech infrastructure
 
 3. **Integration with Official Security Infrastructure:**
-   - Connects with PDRM's Semak Mule database (official law enforcement scam intelligence)
    - Uses Google Cloud's threat detection (VirusTotal, Vertex AI) for URL and malware scanning
    - Creates feedback loop: new scams detected → intelligence logged → detection strengthened
    - Provides anonymized threat intelligence for cybersecurity trend analysis and national security planning
@@ -337,7 +334,6 @@ safelah/
 │   ├── buildVerdict()     # Generate user-facing messages
 ├── guardian.js            # Guardian alert system
 │   ├── notifyGuardians()  # Send alerts to family
-├── semakmule.js           # PDRM database integration
 ├── vertexSearch.js        # Vertex AI Search integration
 ├── virustotal.js          # URL malware scanning
 ├── extractor.js           # Phone/account/URL extraction
@@ -352,7 +348,7 @@ safelah/
 - **API Layer**: `server.js` (Express routes), `gemini.js` (Gemini API)
 - **Business Logic**: `text.js` (detection flow), `image.js` (image pipeline), `speech.js` (audio)
 - **Presentation**: `verdictBuilder.js` (output formatting)
-- **Integration**: `semakmule.js`, `vertexSearch.js`, `virustotal.js` (external services)
+- **Integration**: `vertexSearch.js`, `virustotal.js` (external services)
 - **Frontend**: `public/index.html`, `public/chat.js`, `public/style.css`
 
 **Code Documentation:**
