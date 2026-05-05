@@ -1,7 +1,7 @@
 const { sendMessage } = require('./whatsapp');
-const { analyseText } = require('./text');
-const { analyseImage } = require('./image');
-const { analyseAudio } = require('./audio');
+const { analyseText } = require('./services/text');
+const { analyseImage } = require('./services/image');
+const { analyseAudio } = require('./services/audio');
 const { handleCommand } = require('./commands');
 const { isFirstTimeUser, checkRateLimit, getSession, addMessageToBatch, addImageToBatch, addAudioToBatch } = require('./queries');
 const { processClarificationAnswer, processClarificationAnswerForConversation } = require('./sessionManager');
@@ -100,7 +100,7 @@ async function handleIncoming(message) {
   if (session && session.session_state === 'batch_collection') {
     // Prevent commands from being added as batch messages
     const isCommand = text && (text.startsWith('/scan') || text.startsWith('/analyze') || text.startsWith('/stop') || text.startsWith('/batalkan'));
-    
+
     if (text && !isCommand) {
       // Add text message to batch
       const added = addMessageToBatch(phone, text);
@@ -111,25 +111,25 @@ async function handleIncoming(message) {
         const imageCount = messages.filter(m => m.type === 'image').length;
         const textCount = messages.filter(m => m.type === 'text').length;
         const lang = updatedSession?.language || 'en';
-        
+
         const msgs = {
           bm: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
           en: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
         };
-        
+
         await sendMessage(phone, msgs[lang] || msgs.bm);
       }
       return;
     } else if (hasMedia && (msgType === 'ptt' || msgType === 'audio')) {
       // Transcribe audio and add to batch
-      const { transcribeAudio } = require('./speech');
+      const { transcribeAudio } = require('./services/speech');
       try {
         console.log(`[batch] Processing audio for ${phone}...`);
         const transcript = await transcribeAudio(message);
-        
+
         if (transcript && transcript.trim().length > 0) {
           const added = addAudioToBatch(phone, transcript);
-          
+
           if (added) {
             const updatedSession = getSession(phone);
             const messages = updatedSession?.batch_messages || [];
@@ -137,12 +137,12 @@ async function handleIncoming(message) {
             const imageCount = messages.filter(m => m.type === 'image').length;
             const textCount = messages.filter(m => m.type === 'text').length;
             const lang = updatedSession?.language || 'en';
-            
+
             const msgs = {
               bm: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
               en: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
             };
-            
+
             await sendMessage(phone, msgs[lang] || msgs.bm);
           }
         } else {
@@ -169,11 +169,11 @@ async function handleIncoming(message) {
       try {
         console.log(`[batch] Processing image for ${phone}...`);
         const mediaResult = await downloadMedia(message);
-        
+
         if (mediaResult) {
           const base64Image = mediaResult.data.toString('base64');
           const added = addImageToBatch(phone, base64Image, mediaResult.mimetype);
-          
+
           if (added) {
             const updatedSession = getSession(phone);
             const messages = updatedSession?.batch_messages || [];
@@ -181,12 +181,12 @@ async function handleIncoming(message) {
             const imageCount = messages.filter(m => m.type === 'image').length;
             const textCount = messages.filter(m => m.type === 'text').length;
             const lang = updatedSession?.language || 'en';
-            
+
             const msgs = {
               bm: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
               en: `✅ ${audioCount} audio(s), ${imageCount} image(s), ${textCount} message(s) collected.\n\nSend /analyze to analyze or continue forwarding.`,
             };
-            
+
             await sendMessage(phone, msgs[lang] || msgs.bm);
           }
         } else {

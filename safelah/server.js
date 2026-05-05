@@ -1,9 +1,9 @@
 require('dotenv').config();
 const express = require('express');
-const path    = require('path');
+const path = require('path');
 const session = require('express-session');
-const bcrypt  = require('bcryptjs');
-const crypto  = require('crypto');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { dbReady, getDb } = require('./connection');
 const { handleIncoming } = require('./message');
 const { initializeWhatsApp, getClient } = require('./whatsapp');
@@ -64,7 +64,7 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
   try {
-    const db   = getDb();
+    const db = getDb();
     const hash = await bcrypt.hash(password, 10);
     const code = generate6DigitCode();
     try {
@@ -82,9 +82,9 @@ app.post('/api/auth/register', async (req, res) => {
     // Auto-login after register
     const row = db.exec(`SELECT id FROM web_accounts WHERE username = '${username.replace(/'/g, "''")}' LIMIT 1`);
     const userId = row && row[0] && row[0].values[0][0];
-    req.session.userId   = userId;
+    req.session.userId = userId;
     req.session.username = username;
-    req.session.role     = 'guardian';
+    req.session.role = 'guardian';
     // Save to disk immediately so data survives restarts
     const { saveDb } = require('./connection');
     saveDb();
@@ -103,7 +103,7 @@ app.post('/api/auth/register/guardian', async (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
   try {
-    const db   = getDb();
+    const db = getDb();
     const hash = await bcrypt.hash(password, 10);
     const code = generate6DigitCode();
     try {
@@ -132,7 +132,7 @@ app.post('/api/auth/register/elderly', async (req, res) => {
     return res.status(400).json({ error: 'Username, password and guardian code required' });
   }
   try {
-    const db       = getDb();
+    const db = getDb();
     const guardian = db.exec(
       `SELECT id FROM web_accounts WHERE guardian_code = '${guardianCode}' AND role = 'guardian' LIMIT 1`
     );
@@ -166,7 +166,7 @@ app.post('/api/auth/link-family', requireLogin, (req, res) => {
   const { guardianCode } = req.body;
   if (!guardianCode) return res.status(400).json({ error: 'Guardian code required' });
   try {
-    const db       = getDb();
+    const db = getDb();
     const guardian = db.exec(
       `SELECT id, username FROM web_accounts WHERE guardian_code = '${guardianCode}' AND role = 'guardian' LIMIT 1`
     );
@@ -213,7 +213,7 @@ app.get('/api/auth/my-code', requireLogin, (req, res) => {
     return res.status(403).json({ error: 'Only guardians have a code' });
   }
   try {
-    const db  = getDb();
+    const db = getDb();
     const raw = db.exec(`SELECT guardian_code FROM web_accounts WHERE id = ${req.session.userId} LIMIT 1`);
     const rows = raw && raw[0] && raw[0].values;
     if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
@@ -230,7 +230,7 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
   try {
-    const db  = getDb();
+    const db = getDb();
     const raw = db.exec(
       `SELECT id, role, username, password, guardian_code FROM web_accounts WHERE username = '${username.replace(/'/g, "''")}' LIMIT 1`
     );
@@ -243,9 +243,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (!match) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    req.session.userId   = id;
+    req.session.userId = id;
     req.session.username = uname;
-    req.session.role     = role;
+    req.session.role = role;
     console.log(`[login] User ${uname} (id=${id}) role=${role}`);
     const payload = { success: true, role, username: uname };
     if (role === 'guardian') payload.guardianCode = guardianCode;
@@ -284,7 +284,7 @@ app.get('/api/alerts/stream', requireLogin, (req, res) => {
   alertSubscribers.get(guardianId).add(res);
 
   // Keep-alive ping every 25s
-  const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 25000);
+  const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) { } }, 25000);
 
   req.on('close', () => {
     clearInterval(ping);
@@ -297,14 +297,14 @@ app.get('/api/alerts/stream', requireLogin, (req, res) => {
 app.get('/api/alerts', requireLogin, (req, res) => {
   if (req.session.role !== 'guardian') return res.status(403).json({ error: 'Guardians only' });
   try {
-    const db  = getDb();
+    const db = getDb();
     const raw = db.exec(
       `SELECT id, elderly_name, risk_level, scam_type, snippet, created_at
        FROM family_alerts WHERE guardian_id = ${req.session.userId} AND is_read = 0
        ORDER BY created_at DESC LIMIT 20`
     );
-    const cols  = raw && raw[0] ? raw[0].columns : [];
-    const rows  = raw && raw[0] ? raw[0].values  : [];
+    const cols = raw && raw[0] ? raw[0].columns : [];
+    const rows = raw && raw[0] ? raw[0].values : [];
     const alerts = rows.map(r => Object.fromEntries(cols.map((c, i) => [c, r[i]])));
     res.json({ alerts });
   } catch (err) {
@@ -331,16 +331,16 @@ app.post('/api/analyse', async (req, res) => {
     }
 
     const from = sessionId || req.session?.username || 'web-user';
-    const { analyseTextDirect } = require('./text');
+    const { analyseTextDirect } = require('./services/text');
     const result = await analyseTextDirect(from, text);
 
     // If user is logged-in and has a guardian, push alert for HIGH/MEDIUM
     let alertSent = false;
     console.log(`[analyse] session userId=${req.session?.userId}, username=${req.session?.username}, risk=${result.risk_level}`);
     if (req.session?.userId &&
-        (result.risk_level === 'HIGH' || result.risk_level === 'MEDIUM')) {
+      (result.risk_level === 'HIGH' || result.risk_level === 'MEDIUM')) {
       try {
-        const db  = getDb();
+        const db = getDb();
         const raw = db.exec(
           `SELECT guardian_id FROM web_accounts WHERE id = ${req.session.userId} LIMIT 1`
         );
@@ -354,7 +354,7 @@ app.post('/api/analyse', async (req, res) => {
               `INSERT INTO family_alerts (guardian_id, elderly_id, elderly_name, risk_level, scam_type, snippet)
                VALUES (?, ?, ?, ?, ?, ?)`,
               [guardianId, req.session.userId, req.session.username,
-               result.risk_level, result.scam_type || null, snippet]
+                result.risk_level, result.scam_type || null, snippet]
             );
             pushAlertToGuardian(guardianId, {
               elderly: req.session.username,
@@ -396,7 +396,7 @@ app.post('/api/flow', async (req, res) => {
       return res.status(400).json({ error: 'No text provided' });
     }
 
-    const { runScamDetectionFlow } = require('./text');
+    const { runScamDetectionFlow } = require('./services/text');
     const result = await runScamDetectionFlow({
       text: text.trim(),
       phone: sessionId || 'web-user',
@@ -433,15 +433,15 @@ app.post('/api/analyse-image', async (req, res) => {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     const mime = mimeType || 'image/jpeg';
 
-    const result = await require('./image').analyseImageDirect(base64Data, mime);
+    const result = await require('./services/image').analyseImageDirect(base64Data, mime);
 
     // If user is logged-in and has a guardian, push alert for HIGH/MEDIUM
     let alertSent = false;
     console.log(`[analyse-image] session userId=${req.session?.userId}, username=${req.session?.username}, risk=${result.risk_level}`);
     if (req.session?.userId &&
-        (result.risk_level === 'HIGH' || result.risk_level === 'MEDIUM')) {
+      (result.risk_level === 'HIGH' || result.risk_level === 'MEDIUM')) {
       try {
-        const db  = getDb();
+        const db = getDb();
         const raw = db.exec(
           `SELECT guardian_id FROM web_accounts WHERE id = ${req.session.userId} LIMIT 1`
         );
@@ -455,7 +455,7 @@ app.post('/api/analyse-image', async (req, res) => {
               `INSERT INTO family_alerts (guardian_id, elderly_id, elderly_name, risk_level, scam_type, snippet)
                VALUES (?, ?, ?, ?, ?, ?)`,
               [guardianId, req.session.userId, req.session.username,
-               result.risk_level, result.scam_type || null, snippet]
+                result.risk_level, result.scam_type || null, snippet]
             );
             pushAlertToGuardian(guardianId, {
               elderly: req.session.username,
@@ -507,8 +507,10 @@ app.post('/api/transcribe', async (req, res) => {
     else if (cleanMime.includes('webm')) geminiMime = 'audio/webm';
     else if (fileName) {
       const ext = (fileName.split('.').pop() || '').toLowerCase();
-      const EXT_MAP = { ogg: 'audio/ogg', mp3: 'audio/mp3', wav: 'audio/wav',
-                        m4a: 'audio/mp4', mp4: 'audio/mp4', flac: 'audio/flac', webm: 'audio/webm' };
+      const EXT_MAP = {
+        ogg: 'audio/ogg', mp3: 'audio/mp3', wav: 'audio/wav',
+        m4a: 'audio/mp4', mp4: 'audio/mp4', flac: 'audio/flac', webm: 'audio/webm'
+      };
       geminiMime = EXT_MAP[ext] || 'audio/webm';
     }
 
@@ -557,13 +559,13 @@ app.post('/api/analyse-batch', async (req, res) => {
       return res.status(400).json({ error: 'No messages provided' });
     }
 
-    const { extractTextFromImage, analyseConversationWithGemini } = require('./gemini');
+    const { extractTextFromImage, analyseConversationWithGemini } = require('./services/gemini');
     const { keywordAnalyse } = require('./keywordFallback');
     const { extractEntities } = require('./extractor');
     const { buildVerdict } = require('./verdictBuilder');
     const { logScamIntelligence } = require('./queries');
     const { detectLanguage } = require('./language');
-    const { runScamDetectionFlow } = require('./text');
+    const { runScamDetectionFlow } = require('./services/text');
 
     console.log(`[batch-web] Processing ${messages.length} messages from ${sessionId || 'web-user'}`);
 
@@ -630,7 +632,7 @@ app.post('/api/analyse-batch', async (req, res) => {
 
     if (checkTarget) {
       try {
-        const { checkSemakMule } = require('./semakmule');
+        const { checkSemakMule } = require('./services/semakmule');
         const { searchVertexAI } = require('./vertexSearch');
         const category = conversationResult.extracted_phones[0] ? 'phone' : 'bank';
         const [ccid, vertex] = await Promise.all([
@@ -666,9 +668,9 @@ app.post('/api/analyse-batch', async (req, res) => {
     // Step 7: Push alert to guardian if logged-in user has a guardian and it's HIGH/MEDIUM
     let alertSent = false;
     if (req.session?.userId &&
-        (conversationResult.risk_level === 'HIGH' || conversationResult.risk_level === 'MEDIUM')) {
+      (conversationResult.risk_level === 'HIGH' || conversationResult.risk_level === 'MEDIUM')) {
       try {
-        const db  = getDb();
+        const db = getDb();
         const raw = db.exec(`SELECT guardian_id FROM web_accounts WHERE id = ${req.session.userId} LIMIT 1`);
         const gRows = raw && raw[0] && raw[0].values;
         if (gRows && gRows.length) {
@@ -679,7 +681,7 @@ app.post('/api/analyse-batch', async (req, res) => {
               `INSERT INTO family_alerts (guardian_id, elderly_id, elderly_name, risk_level, scam_type, snippet)
                VALUES (?, ?, ?, ?, ?, ?)`,
               [guardianId, req.session.userId, req.session.username,
-               conversationResult.risk_level, conversationResult.scam_type || null, snippet]
+                conversationResult.risk_level, conversationResult.scam_type || null, snippet]
             );
             pushAlertToGuardian(guardianId, {
               elderly: req.session.username,
@@ -839,6 +841,100 @@ app.get('/api/admin/export', adminGuard, (req, res) => {
   }
 });
 
+
+// ── Community: Report a scam ─────────────────────────────────────────────────
+/**
+ * POST /api/report
+ * Accepts: entity_type, entity_value, bank_name (optional), scam_type, notes
+ * Formats document to match Vertex AI Search schema, uploads it, then
+ * increments reports_count in SQLite.
+ */
+app.post('/api/report', async (req, res) => {
+  try {
+    const { entity_type, entity_value, bank_name, scam_type, notes } = req.body;
+
+    if (!entity_type || !entity_value || !scam_type) {
+      return res.status(400).json({ error: 'entity_type, entity_value and scam_type are required' });
+    }
+
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Build document matching the datastore schemas exactly
+    const docData = {
+      entity_type,
+      entity_value: String(entity_value).trim(),
+      flagged_date: today,
+      risk_level: 'high',
+      scam_type,
+      notes: notes || '',
+    };
+    if (entity_type === 'bank_account' && bank_name) {
+      docData.bank_name = bank_name;
+    }
+
+    // Upload to Vertex AI Search datastore using createDocument
+    const { DocumentServiceClient } = require('@google-cloud/discoveryengine').v1;
+    const PROJECT_ID      = process.env.VERTEX_PROJECT_ID || process.env.PROJECT_ID;
+    const VERTEX_LOCATION = process.env.VERTEX_LOCATION || 'global';
+    const VERTEX_DATASTORE_ID = process.env.VERTEX_DATASTORE_ID;
+
+    if (!PROJECT_ID || !VERTEX_DATASTORE_ID) {
+      return res.status(500).json({ error: 'Vertex AI env vars not configured' });
+    }
+
+    // Pass keyFilename explicitly — same pattern as vertexSearch.js SearchServiceClient
+    const clientOpts = {};
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      clientOpts.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    }
+    const client = new DocumentServiceClient(clientOpts);
+    const parent = `projects/${PROJECT_ID}/locations/${VERTEX_LOCATION}/collections/default_collection/dataStores/${VERTEX_DATASTORE_ID}/branches/default_branch`;
+    const docId  = `community-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    console.log(`[report] parent path: ${parent}`);
+
+    // Use createDocument (needs discoveryengine.editor role, not bulk-import role)
+    const [document] = await client.createDocument({
+      parent,
+      documentId: docId,
+      document: {
+        id: docId,
+        jsonData: JSON.stringify(docData),
+      },
+    });
+
+    console.log(`[report] ✅ Created doc ${document.name} in Vertex AI datastore`);
+
+    // Increment reports_count in SQLite
+    const db = getDb();
+    db.run(`UPDATE stats SET value = value + 1 WHERE key = 'reports_count'`);
+    const { saveDb } = require('./connection');
+    saveDb();
+
+    res.json({ success: true, docId });
+  } catch (err) {
+    console.error('[report] error:', err.message);
+    res.status(500).json({ error: 'Failed to submit report', detail: err.message });
+  }
+});
+
+// ── Community: Stats ─────────────────────────────────────────────────────────
+
+/**
+ * GET /api/stats
+ * Returns { scamsReported: number } from SQLite stats table.
+ */
+app.get('/api/stats', (req, res) => {
+  try {
+    const db = getDb();
+    const raw = db.exec(`SELECT value FROM stats WHERE key = 'reports_count' LIMIT 1`);
+    const rows = raw && raw[0] && raw[0].values;
+    const count = (rows && rows.length) ? rows[0][0] : 0;
+    res.json({ scamsReported: count });
+  } catch (err) {
+    console.error('[stats] error:', err);
+    res.status(500).json({ scamsReported: 0 });
+  }
+});
 
 // ── Start ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 8080;

@@ -13,8 +13,8 @@
 const { createSTTStream } = require('./sttStream');
 const { getBuffer, removeBuffer } = require('./transcriptBuffer');
 const { pushVerdict } = require('./verdictBroadcaster');
-const { analyseText } = require('../text');
-const { notifyGuardians } = require('../guardian');
+const { analyseText } = require('../services/text');
+const { notifyGuardians } = require('../services/guardian');
 const WS_OPEN = 1;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -22,8 +22,8 @@ function mapRiskLevel(verdict) {
   return verdict.risk_level === 'HIGH'
     ? 'HIGH'
     : verdict.risk_level === 'MEDIUM'
-    ? 'MEDIUM'
-    : 'LOW';
+      ? 'MEDIUM'
+      : 'LOW';
 }
 
 /**
@@ -32,7 +32,7 @@ function mapRiskLevel(verdict) {
  */
 function setupLiveCallWS(app) {
   console.log('[ws] Setting up /ws/live-call route with app.ws()');
-  
+
   app.ws('/ws/live-call', async (ws, req) => {
     let initReceived = false;
     let guardianAlertSent = false;
@@ -299,7 +299,7 @@ function setupLiveCallWS(app) {
         }
       }
       sttStreamReady = false;
-      
+
       if (buffer) {
         setTimeout(() => removeBuffer(sessionId), 30000);
       }

@@ -69,7 +69,7 @@ const SAFETY_SETTINGS = [
 
 function getModel() {
   return genAI.getGenerativeModel({
-    model: 'gemini-3.1-flash-lite-preview',
+    model: 'gemini-2.0-flash',
     systemInstruction: SYSTEM_INSTRUCTION,
     safetySettings: SAFETY_SETTINGS,
     generationConfig: {

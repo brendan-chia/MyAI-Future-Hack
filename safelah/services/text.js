@@ -1,16 +1,16 @@
-const { analyseWithGemini }  = require('./gemini');
-const { checkSemakMule }     = require('../external integration/semakmule');
-const { searchVertexAI }     = require('./vertexSearch');
-const { scanUrl }            = require('../external integration/virustotal');
-const { sendMessage }        = require('../whatsapp');
-const { keywordAnalyse }     = require('../keywordFallback');
-const { buildVerdict }       = require('../verdictBuilder');
-const { extractEntities }    = require('../extractor');
-const { detectLanguage }     = require('../language');
-const { notifyGuardians }    = require('../guardian');
+const { analyseWithGemini } = require('./gemini');
+const { checkSemakMule } = require('../external integration/semakmule');
+const { searchVertexAI } = require('./vertexSearch');
+const { scanUrl } = require('../external integration/virustotal');
+const { sendMessage } = require('../whatsapp');
+const { keywordAnalyse } = require('../keywordFallback');
+const { buildVerdict } = require('../verdictBuilder');
+const { extractEntities } = require('../extractor');
+const { detectLanguage } = require('../language');
+const { notifyGuardians } = require('./guardian');
 const { logScamIntelligence } = require('../queries');
-const { ai }                = require('./gemini');
-const { z }                 = require('zod');
+const { ai } = require('./gemini');
+const { z } = require('zod');
 
 function uniqueStrings(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).filter(v => typeof v === 'string' && v.trim()))];
@@ -55,25 +55,25 @@ const scamDetectionFlow = ai.defineFlow(
   {
     name: 'scamDetectionFlow',
     inputSchema: z.object({
-      text:      z.string(),
-      phone:     z.string(),
+      text: z.string(),
+      phone: z.string(),
       visual_context: z.string().optional(),
       pre_extracted_phones: z.array(z.string()).optional(),
       pre_extracted_accounts: z.array(z.string()).optional(),
       pre_extracted_urls: z.array(z.string()).optional(),
     }),
     outputSchema: z.object({
-      risk_level:         z.enum(['HIGH', 'MEDIUM', 'LOW']),
-      scam_type:          z.string().nullable().optional(),
-      confidence:         z.coerce.number(),
-      reason_bm:          z.string(),
-      reason_en:          z.string(),
-      extracted_phones:   z.array(z.string()),
+      risk_level: z.enum(['HIGH', 'MEDIUM', 'LOW']),
+      scam_type: z.string().nullable().optional(),
+      confidence: z.coerce.number(),
+      reason_bm: z.string(),
+      reason_en: z.string(),
+      extracted_phones: z.array(z.string()),
       extracted_accounts: z.array(z.string()),
-      extracted_urls:     z.array(z.string()),
-      source:             z.string().optional(),
-      ccidResult:         z.any().optional(),
-      vertexResult:       z.any().optional(),
+      extracted_urls: z.array(z.string()),
+      source: z.string().optional(),
+      ccidResult: z.any().optional(),
+      vertexResult: z.any().optional(),
     }),
   },
   async ({ text, phone, visual_context = '', pre_extracted_phones = [], pre_extracted_accounts = [], pre_extracted_urls = [] }) => {
@@ -87,10 +87,10 @@ const scamDetectionFlow = ai.defineFlow(
     // Layer 2 — short-circuit: if keyword fallback catches obvious HIGH, skip Gemini
     const quickCheck = keywordAnalyse(text);
     if (quickCheck.risk_level === 'HIGH' && quickCheck.source === 'keyword_fallback') {
-      quickCheck.extracted_phones   = phones;
+      quickCheck.extracted_phones = phones;
       quickCheck.extracted_accounts = accounts;
-      quickCheck.extracted_urls     = urls;
-      quickCheck.ccidResult         = { found: false, reports: 0 };
+      quickCheck.extracted_urls = urls;
+      quickCheck.ccidResult = { found: false, reports: 0 };
       return normalizeFlowResult(quickCheck, { phones, accounts, urls });
     }
 
@@ -101,18 +101,18 @@ const scamDetectionFlow = ai.defineFlow(
       // Gemini unavailable — fall back to keyword result
       console.warn('[flow] Gemini unavailable, using keyword fallback');
       result = quickCheck;
-      result.extracted_phones   = phones;
+      result.extracted_phones = phones;
       result.extracted_accounts = accounts;
-      result.extracted_urls     = urls;
+      result.extracted_urls = urls;
     }
 
     result = normalizeFlowResult(result, { phones, accounts, urls });
 
     // Layer 4 — aggregate signals: CCID Semak Mule + Vertex AI Search + VirusTotal
-    let ccidResult   = { found: false, reports: 0 };
+    let ccidResult = { found: false, reports: 0 };
     let vertexResult = { found: false, hits: 0, results: [] };
     const checkTarget = (result.extracted_phones[0] || phones[0]) ||
-                        (result.extracted_accounts[0] || accounts[0]);
+      (result.extracted_accounts[0] || accounts[0]);
 
     if (checkTarget) {
       const category = (result.extracted_phones[0] || phones[0]) ? 'phone' : 'bank';
@@ -122,16 +122,16 @@ const scamDetectionFlow = ai.defineFlow(
         checkSemakMule(checkTarget, category),
         searchVertexAI(checkTarget),
       ]);
-      ccidResult   = ccid;
+      ccidResult = ccid;
       vertexResult = vertex;
 
       // CCID escalation
       if (ccidResult.found && result.risk_level === 'LOW') result.risk_level = 'MEDIUM';
-      if (ccidResult.reports >= 3)                         result.risk_level = 'HIGH';
+      if (ccidResult.reports >= 3) result.risk_level = 'HIGH';
 
       // Vertex AI Search escalation
       if (vertexResult.found && result.risk_level === 'LOW') result.risk_level = 'MEDIUM';
-      if (vertexResult.hits >= 3)                            result.risk_level = 'HIGH';
+      if (vertexResult.hits >= 3) result.risk_level = 'HIGH';
     }
 
     const urlToScan = result.extracted_urls[0] || urls[0];
@@ -143,7 +143,7 @@ const scamDetectionFlow = ai.defineFlow(
       ]);
       if (vtResult?.is_malicious) {
         result.risk_level = 'HIGH';
-        result.scam_type  = result.scam_type || 'PHISHING_LINK';
+        result.scam_type = result.scam_type || 'PHISHING_LINK';
       }
       // Merge Vertex URL results
       if (vtxUrl.found && !vertexResult.found) {
@@ -152,7 +152,7 @@ const scamDetectionFlow = ai.defineFlow(
       }
     }
 
-    result.ccidResult   = ccidResult;
+    result.ccidResult = ccidResult;
     result.vertexResult = vertexResult;
     return result;
   }
@@ -204,8 +204,8 @@ async function analyseTextDirect(sessionId, text, forceLang = null) {
   };
 }
 
-  async function analyseText(from, text, batchMode = false, forceLang = null) {
-  const lang  = forceLang || detectLanguage(text);
+async function analyseText(from, text, batchMode = false, forceLang = null) {
+  const lang = forceLang || detectLanguage(text);
   const phone = from;
 
   // ── Run the Genkit flow (layers 1–4) ──────────────────────────────────────
@@ -230,13 +230,13 @@ async function analyseTextDirect(sessionId, text, forceLang = null) {
 
   // Log enriched intelligence
   logScamIntelligence({
-    scamType:    result.scam_type,
-    riskLevel:   result.risk_level,
+    scamType: result.scam_type,
+    riskLevel: result.risk_level,
     callerPhone: phone,
-    phones:      result.extracted_phones   || [],
-    accounts:    result.extracted_accounts || [],
-    urls:        result.extracted_urls     || [],
-    confidence:  result.confidence         || 0,
+    phones: result.extracted_phones || [],
+    accounts: result.extracted_accounts || [],
+    urls: result.extracted_urls || [],
+    confidence: result.confidence || 0,
   });
 
   console.log(`[text] ${phone} → risk: ${result.risk_level}, type: ${result.scam_type}, source: ${result.source || 'gemini'}`);

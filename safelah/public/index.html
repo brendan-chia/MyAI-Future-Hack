@@ -26,6 +26,8 @@
       <div class="header-right">
         <div class="status-dot"></div>
         <span class="status-text">Online</span>
+        <!-- Report Scam button -->
+        <button class="report-scam-btn" id="reportScamHeaderBtn" title="Report a scam to community">🛡 Report</button>
         <button class="call-start-btn" id="callStartBtn" title="Start call companion" style="display:none">📞 Call</button>
         <button class="call-end-btn" id="callEndBtn" title="End call" style="display:none">End Call</button>
         <div class="user-badge" id="userBadge" title="Account information" style="display:none">
@@ -35,6 +37,11 @@
         <button class="logout-btn" id="logoutBtn" title="Log out" style="display:none">⏻</button>
       </div>
     </header>
+
+    <!-- Community counter banner -->
+    <div class="community-banner" id="communityBanner">
+      🛡 <span id="communityCount">0</span> scams reported by community
+    </div>
 
     <!-- Chat area -->
     <main class="chat-area" id="chatArea">
@@ -102,6 +109,167 @@
     </div>
   </div>
 
+  <!-- ── Report Scam Panel (slide-up) ── -->
+  <div class="report-panel-backdrop" id="reportPanelBackdrop"></div>
+  <div class="report-panel" id="reportPanel" role="dialog" aria-modal="true" aria-label="Report Scam Form">
+    <!-- Panel header -->
+    <div class="report-panel-header">
+      <div class="report-panel-title">
+        <span>Report scam — form</span>
+        <span class="report-new-tab-badge">New tab</span>
+      </div>
+      <button class="report-panel-close" id="reportPanelClose" title="Close">✕</button>
+    </div>
+
+    <!-- Tab strip -->
+    <div class="report-tabs-container">
+      <div class="report-tabs" id="reportTabs">
+        <button class="report-tab active" data-tab="phone" id="tabPhone">Phone / account</button>
+        <button class="report-tab" data-tab="url" id="tabUrl">URL / link</button>
+        <button class="report-tab" data-tab="screenshot" id="tabScreenshot">Screenshot</button>
+      </div>
+    </div>
+
+    <!-- Tab contents -->
+    <div class="report-panel-body">
+
+      <!-- TAB 1: Phone / account -->
+      <div class="report-tab-content active" id="tabContentPhone">
+        <form id="reportFormPhone" autocomplete="off">
+          <div class="report-field">
+            <label class="report-label" for="reportEntityValue">Suspicious phone or account no.</label>
+            <input class="report-input" type="text" id="reportEntityValue" name="entity_value"
+              placeholder="e.g. 012-3456789 or 1234567890" autocomplete="off">
+          </div>
+
+          <div class="report-field">
+            <label class="report-label" for="reportScamType">Scam type</label>
+            <select class="report-select" id="reportScamType" name="scam_type">
+              <option value="">— Select scam type —</option>
+              <option value="CategoriesMacau">Macau scam</option>
+              <option value="CategoriesFacebook">Facebook scam</option>
+              <option value="CategoriesJob">Job scam</option>
+              <option value="CategoriesInvestment">Investment scam</option>
+              <option value="CategorieseWallet">eWallet scam</option>
+              <option value="CategoriesParcel">Parcel scam</option>
+              <option value="CategoriesLove">Love scam</option>
+              <option value="CategoriesPhishing">Phishing</option>
+              <option value="CategoriesOther">Other</option>
+            </select>
+          </div>
+
+          <!-- Bank name: shown only when bank account detected -->
+          <div class="report-field" id="bankNameField" style="display:none;">
+            <label class="report-label" for="reportBankName">Bank name</label>
+            <select class="report-select" id="reportBankName" name="bank_name">
+              <option value="">— Select bank —</option>
+              <option value="TNG">TNG</option>
+              <option value="Maybank">Maybank</option>
+              <option value="CIMB">CIMB</option>
+              <option value="RHB">RHB</option>
+              <option value="BSN">BSN</option>
+              <option value="Bank Islam">Bank Islam</option>
+              <option value="Boost">Boost</option>
+              <option value="ShopeePay">ShopeePay</option>
+              <option value="GrabPay">GrabPay</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="report-field">
+            <label class="report-label" for="reportNotes">Description (optional)</label>
+            <textarea class="report-textarea" id="reportNotes" name="notes"
+              placeholder="What happened? What did they say?" rows="3"></textarea>
+          </div>
+
+          <div class="report-submit-area">
+            <button type="submit" class="report-submit-btn" id="reportSubmitPhone">
+              Submit to community database
+            </button>
+            <p class="report-submit-hint">Your submission helps protect other Malaysians</p>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 2: URL / link -->
+      <div class="report-tab-content" id="tabContentUrl">
+        <form id="reportFormUrl" autocomplete="off">
+          <div class="report-field">
+            <label class="report-label" for="reportUrlValue">Suspicious URL or link</label>
+            <input class="report-input" type="text" id="reportUrlValue" name="entity_value"
+              placeholder="e.g. https://suspicious-site.com" autocomplete="off">
+          </div>
+
+          <div class="report-field">
+            <label class="report-label" for="reportUrlScamType">Scam type</label>
+            <select class="report-select" id="reportUrlScamType" name="scam_type">
+              <option value="">— Select scam type —</option>
+              <option value="CategoriesMacau">Macau scam</option>
+              <option value="CategoriesFacebook">Facebook scam</option>
+              <option value="CategoriesJob">Job scam</option>
+              <option value="CategoriesInvestment">Investment scam</option>
+              <option value="CategorieseWallet">eWallet scam</option>
+              <option value="CategoriesParcel">Parcel scam</option>
+              <option value="CategoriesLove">Love scam</option>
+              <option value="CategoriesPhishing">Phishing</option>
+              <option value="CategoriesOther">Other</option>
+            </select>
+          </div>
+
+          <div class="report-field">
+            <label class="report-label" for="reportUrlNotes">Description (optional)</label>
+            <textarea class="report-textarea" id="reportUrlNotes" name="notes"
+              placeholder="What happened? What did they say?" rows="3"></textarea>
+          </div>
+
+          <div class="report-submit-area">
+            <button type="submit" class="report-submit-btn" id="reportSubmitUrl">
+              Submit to community database
+            </button>
+            <p class="report-submit-hint">Your submission helps protect other Malaysians</p>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 3: Screenshot -->
+      <div class="report-tab-content" id="tabContentScreenshot">
+        <form id="reportFormScreenshot" autocomplete="off">
+          <div class="report-field">
+            <label class="report-label">Screenshot</label>
+            <div class="report-dropzone" id="reportDropzone">
+              <input type="file" accept="image/*" id="reportScreenshotInput" hidden>
+              <div class="report-dropzone-inner" id="reportDropzoneInner">
+                <span class="report-dropzone-icon">📷</span>
+                <p>Drop screenshot here or click to upload</p>
+              </div>
+              <img id="reportDropzonePreview" src="" alt="" style="display:none; max-width:100%; border-radius:8px; margin-top:10px;">
+            </div>
+          </div>
+
+          <div class="report-field">
+            <label class="report-label" for="reportScreenshotNotes">Description (optional)</label>
+            <textarea class="report-textarea" id="reportScreenshotNotes" name="notes"
+              placeholder="What happened? What did they say?" rows="3"></textarea>
+          </div>
+
+          <div class="report-submit-area">
+            <button type="submit" class="report-submit-btn" id="reportSubmitScreenshot">
+              Submit to community database
+            </button>
+            <p class="report-submit-hint">Your submission helps protect other Malaysians</p>
+          </div>
+        </form>
+      </div>
+
+    </div><!-- /.report-panel-body -->
+
+    <!-- Success toast (inside panel) -->
+    <div class="report-success-toast" id="reportSuccessToast" style="display:none;">
+      ✅ Report submitted! Thank you for helping protect Malaysians. 🛡
+    </div>
+  </div><!-- /.report-panel -->
+
   <script src="chat.js"></script>
 </body>
 </html>
+

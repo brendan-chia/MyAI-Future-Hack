@@ -1,6 +1,6 @@
 const { analyseText } = require('./services/text');
 const { sendMessage } = require('./whatsapp');
-const { notifyGuardians } = require('./guardian');
+const { notifyGuardians } = require('./services/guardian');
 const { buildVerdict } = require('./verdictBuilder');
 const { logScamIntelligence, getBatchMessages, saveClarificationAnswer, getClarificationAnswers, clearBatchSession } = require('./queries');
 const { extractEntities } = require('./extractor');
@@ -15,7 +15,7 @@ const { inferSenderType } = require('./messageExtractor');
 async function analyzeBatchMessages(phone, lang = 'en') {
   lang = 'en';
   const messages = getBatchMessages(phone);
-  
+
   const errorMsgs = {
     bm: '❌ Tiada mesej untuk dianalisis. Hantar mesej dahulu atau guna /bantuan untuk bantuan.',
     en: '❌ No messages to analyze. Send messages first or use /help for help.',
@@ -86,19 +86,19 @@ async function analyzeBatchMessages(phone, lang = 'en') {
     const conversationText = enrichedMessages
       .map((msg, idx) => {
         let sender, content;
-        
+
         if (msg.type === 'image') {
           sender = '[Image/Screenshot]';
-          content = msg.imageDescription 
+          content = msg.imageDescription
             ? `${msg.imageDescription.scam_type || 'Screenshot detected'} - Risk: ${msg.imageDescription.risk_level || 'Unknown'}`
             : 'Screenshot (content unclear)';
         } else {
           sender = msg.senderType === 'SCAMMER' ? '[Pengirim Syak]' :
-                   msg.senderType === 'USER' ? '[Anda]' :
-                   '[Mesej]';
+            msg.senderType === 'USER' ? '[Anda]' :
+              '[Mesej]';
           content = msg.text;
         }
-        
+
         return `${sender} (Message ${idx + 1}):\n${content}`;
       })
       .join('\n\n---\n\n');
@@ -194,11 +194,11 @@ function correlateMessages(results, messages) {
 
       // Check if messages are related:
       const relatedByPhone = sig1.phones.some(p => sig2.phones.includes(p)) ||
-                             sig1.accounts.some(a => sig2.accounts.includes(a));
-      
-      const relatedByScamType = sig1.scamType && sig2.scamType && 
-                               sig1.scamType === sig2.scamType &&
-                               sig1.scamType !== 'UNKNOWN_SCAM';
+        sig1.accounts.some(a => sig2.accounts.includes(a));
+
+      const relatedByScamType = sig1.scamType && sig2.scamType &&
+        sig1.scamType === sig2.scamType &&
+        sig1.scamType !== 'UNKNOWN_SCAM';
 
       const relatedByPatterns = detectCommonPatterns(sig1.text, sig2.text);
 
@@ -473,8 +473,8 @@ async function sendBatchVerdicts(phone, messages, results) {
       continue;
     }
 
-    const emoji = result.risk_level === 'HIGH' ? '🔴' : 
-                  result.risk_level === 'MEDIUM' ? '⚠️' : '🟢';
+    const emoji = result.risk_level === 'HIGH' ? '🔴' :
+      result.risk_level === 'MEDIUM' ? '⚠️' : '🟢';
 
     const campaignBadge = result.isPartOfCampaign ? ' 🎯' : '';
 
@@ -486,13 +486,13 @@ async function sendBatchVerdicts(phone, messages, results) {
 
     // Log to database
     logScamIntelligence({
-      scamType:   result.scam_type,
-      riskLevel:  result.risk_level,
+      scamType: result.scam_type,
+      riskLevel: result.risk_level,
       callerPhone: phone,
-      phones:     result.extracted_phones   || [],
-      accounts:   result.extracted_accounts || [],
-      urls:       result.extracted_urls     || [],
-      confidence: result.confidence         || 0,
+      phones: result.extracted_phones || [],
+      accounts: result.extracted_accounts || [],
+      urls: result.extracted_urls || [],
+      confidence: result.confidence || 0,
     });
   }
 
@@ -515,7 +515,7 @@ async function sendBatchVerdicts(phone, messages, results) {
     if (!results[i].error && results[i].risk_level !== 'LOW') {
       const ccidResult = results[i].ccidResult || { found: false, reports: 0 };
       let verdict = buildVerdict(results[i], ccidResult, 'en');
-      
+
       if (results[i].isPartOfCampaign) {
         verdict += `\n\n🎯 [COORDINATED CAMPAIGN] This message is part of a scam campaign involving other messages you sent.`;
       }
@@ -541,14 +541,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
 
   if (!scamType || scamType === 'UNKNOWN_SCAM') {
     return [
-      { 
-        id: 'sender_known', 
-        question: lang === 'en' 
-          ? 'Do you know the sender of these messages?' 
-          : 'Adakah anda kenal pengirim mesej-mesej ini?' 
+      {
+        id: 'sender_known',
+        question: lang === 'en'
+          ? 'Do you know the sender of these messages?'
+          : 'Adakah anda kenal pengirim mesej-mesej ini?'
       },
-      { 
-        id: 'context_requested', 
+      {
+        id: 'context_requested',
         question: lang === 'en'
           ? 'Did you request the help or service being offered?'
           : 'Adakah anda meminta bantuan atau perkhidmatan yang ditawarkan?'
@@ -559,14 +559,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
   switch (scamType) {
     case 'INVESTMENT_SCAM':
       questions.push(
-        { 
-          id: 'signup', 
+        {
+          id: 'signup',
           question: lang === 'en'
             ? 'Did you intentionally sign up for this platform/group?'
             : 'Adakah anda mendaftar di platform/kumpulan ini dengan sengaja?'
         },
-        { 
-          id: 'promised', 
+        {
+          id: 'promised',
           question: lang === 'en'
             ? 'Is the sender promising exceptionally high returns?'
             : 'Adakah pemberi mesej menjanjikan pulangan yang luar biasa tinggi?'
@@ -576,14 +576,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
 
     case 'LOAN_SCAM':
       questions.push(
-        { 
-          id: 'applied', 
+        {
+          id: 'applied',
           question: lang === 'en'
             ? 'Did you seriously apply for a loan from this party?'
             : 'Adakah anda secara serius memohon pinjaman dari pihak ini?'
         },
-        { 
-          id: 'upfront_asked', 
+        {
+          id: 'upfront_asked',
           question: lang === 'en'
             ? 'Are they asking for upfront payment before loan approval?'
             : 'Adakah mereka minta bayaran pendahuluan sebelum pinjaman diluluskan?'
@@ -593,14 +593,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
 
     case 'LOVE_SCAM':
       questions.push(
-        { 
-          id: 'known_offline', 
+        {
+          id: 'known_offline',
           question: lang === 'en'
             ? 'Do you know this person in real life?'
             : 'Adakah anda kenal orang ini dalam kehidupan sebenar?'
         },
-        { 
-          id: 'money_requested', 
+        {
+          id: 'money_requested',
           question: lang === 'en'
             ? 'Are they starting to ask for money in this message sequence?'
             : 'Adakah mereka mula meminta wang di dalam urutan mesej ini?'
@@ -610,14 +610,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
 
     case 'JOB_SCAM':
       questions.push(
-        { 
-          id: 'applied_job', 
+        {
+          id: 'applied_job',
           question: lang === 'en'
             ? 'Did you actually apply for this job?'
             : 'Adakah anda benar-benar memohon kerja ini?'
         },
-        { 
-          id: 'payment_required', 
+        {
+          id: 'payment_required',
           question: lang === 'en'
             ? 'Are they asking for payment/registration fee?'
             : 'Adakah mereka minta pembayaran/yuran pendaftaran?'
@@ -627,14 +627,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
 
     case 'PARCEL_SCAM':
       questions.push(
-        { 
-          id: 'expecting_parcel', 
+        {
+          id: 'expecting_parcel',
           question: lang === 'en'
             ? 'Were you expecting a parcel delivery?'
             : 'Adakah anda mengharapkan penghantaran parcel?'
         },
-        { 
-          id: 'payment_for_delivery', 
+        {
+          id: 'payment_for_delivery',
           question: lang === 'en'
             ? 'Are they asking you to pay for delivery/clearance?'
             : 'Adakah mereka minta anda bayar untuk penghantaran/pembersihan?'
@@ -644,14 +644,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
 
     case 'MACAU_SCAM':
       questions.push(
-        { 
-          id: 'won_legitimately', 
+        {
+          id: 'won_legitimately',
           question: lang === 'en'
             ? 'Did you legitimately enter this prize/lottery draw?'
             : 'Adakah anda benar-benar menyertai cabutan hadiah/lotteri ini?'
         },
-        { 
-          id: 'deposit_required', 
+        {
+          id: 'deposit_required',
           question: lang === 'en'
             ? 'Are they asking for deposit money to claim prize?'
             : 'Adakah mereka minta deposit untuk menuntut hadiah?'
@@ -661,14 +661,14 @@ function generateConversationQuestions(scamType, lang = 'en') {
 
     default:
       questions.push(
-        { 
-          id: 'sender_known', 
+        {
+          id: 'sender_known',
           question: lang === 'en'
             ? 'Do you know the sender of these messages?'
             : 'Adakah anda kenal pengirim mesej-mesej ini?'
         },
-        { 
-          id: 'suspicious_pattern', 
+        {
+          id: 'suspicious_pattern',
           question: lang === 'en'
             ? 'Does this message sequence feel suspicious to you?'
             : 'Adakah anda merasa urutan mesej ini mencurigakan?'
@@ -714,11 +714,11 @@ async function askClarificationQuestionsForConversation(phone, messages, result,
 
   let promptText = headerMsgs[lang] || headerMsgs.bm;
   promptText += msgListHeaderMsgs[lang] || msgListHeaderMsgs.bm;
-  
+
   enrichedMessages.slice(0, 3).forEach((msg, idx) => {
     const senderLabel = msg.senderType === 'SCAMMER' ? '👤 Pengirim' :
-                        msg.senderType === 'USER' ? '👤 Anda' :
-                        '📨 Mesej';
+      msg.senderType === 'USER' ? '👤 Anda' :
+        '📨 Mesej';
     const preview = msg.text.substring(0, 60) + (msg.text.length > 60 ? '...' : '');
     promptText += `${idx + 1}. [${senderLabel}]: "${preview}"\n`;
   });
@@ -755,7 +755,7 @@ async function sendConversationVerdict(phone, messages, result, enrichedMessages
   const audioCount = messages.filter(m => m.type === 'audio').length;
   const imageCount = messages.filter(m => m.type === 'image').length;
   const textCount = messages.filter(m => m.type === 'text').length;
-  
+
   const summaryMsgs = {
     bm: () => `✅ Analisis selesai (Mesej: ${textCount}, Gambar: ${imageCount}, Audio: ${audioCount}):\n\n`,
     en: () => `✅ Analysis complete (Text: ${textCount}, Images: ${imageCount}, Audio: ${audioCount}):\n\n`,
@@ -789,9 +789,9 @@ async function sendConversationVerdict(phone, messages, result, enrichedMessages
   };
 
   let summaryText = (summaryMsgs[lang] || summaryMsgs.bm)();
-  
-  const emoji = result.risk_level === 'HIGH' ? '🔴' : 
-                result.risk_level === 'MEDIUM' ? '⚠️' : '🟢';
+
+  const emoji = result.risk_level === 'HIGH' ? '🔴' :
+    result.risk_level === 'MEDIUM' ? '⚠️' : '🟢';
 
   summaryText += `${emoji} **${riskLabels[lang]?.[result.risk_level] || riskLabels.bm[result.risk_level]}**\n`;
   summaryText += `${scamTypeLabel[lang] || scamTypeLabel.bm}: ${result.scam_type || 'UNKNOWN'}\n`;
@@ -799,12 +799,12 @@ async function sendConversationVerdict(phone, messages, result, enrichedMessages
 
   // Show the conversation context with sender labels
   summaryText += conversationContextLabel[lang] || conversationContextLabel.bm;
-  
+
   if (enrichedMessages && enrichedMessages.length > 0) {
     enrichedMessages.forEach((msg, idx) => {
       const senderLabel = msg.senderType === 'SCAMMER' ? '👤 Pengirim' :
-                          msg.senderType === 'USER' ? '👤 Anda' :
-                          '📨 Mesej';
+        msg.senderType === 'USER' ? '👤 Anda' :
+          '📨 Mesej';
       const preview = msg.text.substring(0, 50) + (msg.text.length > 50 ? '...' : '');
       summaryText += `${idx + 1}. ${senderLabel}: ${preview}\n`;
     });
@@ -823,13 +823,13 @@ async function sendConversationVerdict(phone, messages, result, enrichedMessages
 
   // Log and notify guardians if HIGH
   logScamIntelligence({
-    scamType:   result.scam_type,
-    riskLevel:  result.risk_level,
+    scamType: result.scam_type,
+    riskLevel: result.risk_level,
     callerPhone: phone,
-    phones:     result.extracted_phones   || [],
-    accounts:   result.extracted_accounts || [],
-    urls:       result.extracted_urls     || [],
-    confidence: result.confidence         || 0,
+    phones: result.extracted_phones || [],
+    accounts: result.extracted_accounts || [],
+    urls: result.extracted_urls || [],
+    confidence: result.confidence || 0,
   });
   if (result.risk_level === 'HIGH') {
     await notifyGuardians(phone, result.scam_type);

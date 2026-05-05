@@ -130,6 +130,16 @@ const dbReady = (async () => {
     )
   `);
 
+  // ── Community stats (tracks total community scam reports) ──────────────────
+  db.run(`
+    CREATE TABLE IF NOT EXISTS stats (
+      key    TEXT PRIMARY KEY,
+      value  INTEGER DEFAULT 0
+    )
+  `);
+  // Seed the reports_count row if it doesn't exist
+  db.run(`INSERT OR IGNORE INTO stats (key, value) VALUES ('reports_count', 0)`);
+
   // ── Migrations: Add missing columns to existing tables ──────────────────────
   console.log('[db] Running migrations...');
   const migrations = [

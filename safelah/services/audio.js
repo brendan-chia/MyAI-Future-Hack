@@ -1,10 +1,10 @@
-const { analyseAudioWithGemini }  = require('./gemini');
+const { analyseAudioWithGemini } = require('./gemini');
 const { sendMessage, downloadMedia } = require('../whatsapp');
-const { buildVerdict }            = require('../verdictBuilder');
-const { runScamDetectionFlow }    = require('./text');
-const { detectLanguage }          = require('../language');
-const { notifyGuardians }         = require('../guardian');
-const { logScamIntelligence }     = require('../queries');
+const { buildVerdict } = require('../verdictBuilder');
+const { runScamDetectionFlow } = require('./text');
+const { detectLanguage } = require('../language');
+const { notifyGuardians } = require('./guardian');
+const { logScamIntelligence } = require('../queries');
 
 async function analyseAudio(from, message) {
   try {
@@ -46,9 +46,9 @@ async function analyseAudio(from, message) {
       text,
       phone: from,
       visualContext: extraction.visual_cues || '',      // audio cues go here
-      preExtractedPhones:   extraction.phones   || [],
+      preExtractedPhones: extraction.phones || [],
       preExtractedAccounts: extraction.accounts || [],
-      preExtractedUrls:     extraction.urls     || [],
+      preExtractedUrls: extraction.urls || [],
     });
 
     const ccidResult = result.ccidResult || { found: false, reports: 0 };
@@ -63,13 +63,13 @@ async function analyseAudio(from, message) {
     }
 
     logScamIntelligence({
-      scamType:    result.scam_type,
-      riskLevel:   result.risk_level,
+      scamType: result.scam_type,
+      riskLevel: result.risk_level,
       callerPhone: from,
-      phones:      result.extracted_phones   || [],
-      accounts:    result.extracted_accounts || [],
-      urls:        result.extracted_urls     || [],
-      confidence:  result.confidence         || 0,
+      phones: result.extracted_phones || [],
+      accounts: result.extracted_accounts || [],
+      urls: result.extracted_urls || [],
+      confidence: result.confidence || 0,
     });
 
     console.log(`[audio] ${from} → risk: ${result.risk_level}, type: ${result.scam_type}`);

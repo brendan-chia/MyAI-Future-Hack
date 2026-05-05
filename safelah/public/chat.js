@@ -599,7 +599,8 @@ async function runScamCheck(text, image) {
       data = await res.json();
     }
     thinking.remove();
-    addVerdict(getVerdictText(data), data?.risk_level || 'UNKNOWN');
+    const entityHint = (data?.extracted_phones?.[0] || data?.extracted_accounts?.[0] || '');
+    addVerdict(getVerdictText(data), data?.risk_level || 'UNKNOWN', entityHint);
     addPipelineDetails(data);
     if (data?.alertSent) {
       addBotMessage('🔔 A security alert has been sent automatically to your Guardian.');
@@ -646,7 +647,8 @@ async function runBatchAnalysis() {
     );
 
     // Show verdict
-    addVerdict(getVerdictText(data), data?.risk_level || 'UNKNOWN');
+    const batchEntityHint = (data?.extracted_phones?.[0] || data?.extracted_accounts?.[0] || '');
+    addVerdict(getVerdictText(data), data?.risk_level || 'UNKNOWN', batchEntityHint);
     addPipelineDetails(data);
     if (data?.alertSent) {
       addBotMessage('🔔 A security alert has been sent automatically to your Guardian.');
@@ -937,7 +939,13 @@ function addThinking(label) {
   return wrapper;
 }
 
-function addVerdict(text, riskLevel) {
+function addVerdict(text, riskLevel, entityHint) {
+  // Delegate to the community-aware version (defined after module init)
+  if (typeof window._addVerdictInternal === 'function') {
+    window._addVerdictInternal(text, riskLevel, entityHint);
+    return;
+  }
+  // Fallback (before community JS loads — should not happen)
   const wrapper   = document.createElement('div');
   const riskClass = riskLevel === 'HIGH' ? 'verdict-high' : riskLevel === 'MEDIUM' ? 'verdict-medium' : riskLevel === 'LOW' ? 'verdict-low' : '';
   wrapper.className = `message bot-message ${riskClass}`;
@@ -1132,3 +1140,316 @@ if (callEndBtn) {
 }
 
 updateSendBtn();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Community Scam Reporting Feature
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Stats counter ─────────────────────────────────────────────────────────────
+async function fetchAndUpdateStats() {
+  try {
+    const res  = await fetch('/api/stats');
+    const data = await res.json();
+    const el = document.getElementById('communityCount');
+    if (el && typeof data.scamsReported === 'number') {
+      // Animate number change
+      const current = parseInt(el.textContent) || 0;
+      if (current !== data.scamsReported) {
+        animateCounter(el, current, data.scamsReported, 800);
+      }
+    }
+  } catch (_) {}
+}
+
+function animateCounter(el, from, to, duration) {
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = to;
+  }
+  requestAnimationFrame(step);
+}
+
+// Fetch on load and every 30s
+fetchAndUpdateStats();
+setInterval(fetchAndUpdateStats, 30000);
+
+// ── Panel open/close ──────────────────────────────────────────────────────────
+const reportPanel        = document.getElementById('reportPanel');
+const reportPanelBackdrop = document.getElementById('reportPanelBackdrop');
+const reportPanelClose   = document.getElementById('reportPanelClose');
+const reportScamHeaderBtn = document.getElementById('reportScamHeaderBtn');
+
+function openReportPanel(prefill) {
+  reportPanel.classList.add('open');
+  reportPanelBackdrop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Reset to tab 1
+  switchTab('phone');
+
+  if (prefill) {
+    const entityInput = document.getElementById('reportEntityValue');
+    if (entityInput) {
+      entityInput.value = prefill;
+      // Trigger bank account detection
+      detectBankAccount(prefill);
+    }
+  }
+
+  // Hide success toast
+  const toast = document.getElementById('reportSuccessToast');
+  if (toast) toast.style.display = 'none';
+}
+
+function closeReportPanel() {
+  reportPanel.classList.remove('open');
+  reportPanelBackdrop.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+if (reportScamHeaderBtn) {
+  reportScamHeaderBtn.addEventListener('click', () => openReportPanel());
+}
+if (reportPanelClose) {
+  reportPanelClose.addEventListener('click', closeReportPanel);
+}
+if (reportPanelBackdrop) {
+  reportPanelBackdrop.addEventListener('click', closeReportPanel);
+}
+
+// Expose for CTA strip buttons
+window.openReportPanelWithPrefill = function(entity) {
+  openReportPanel(entity);
+};
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+const tabContentMap = {
+  phone:      'tabContentPhone',
+  url:        'tabContentUrl',
+  screenshot: 'tabContentScreenshot',
+};
+
+function switchTab(tabName) {
+  // Update buttons
+  document.querySelectorAll('.report-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  // Update content
+  Object.entries(tabContentMap).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', key === tabName);
+  });
+}
+
+document.querySelectorAll('.report-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ── Bank account auto-detection ───────────────────────────────────────────────
+// Heuristic: no leading 0, length > 10 digits → bank account
+function isBankAccount(value) {
+  const digits = value.replace(/\D/g, '');
+  return digits.length > 10 && !digits.startsWith('0');
+}
+
+function detectBankAccount(value) {
+  const bankNameField = document.getElementById('bankNameField');
+  if (bankNameField) {
+    bankNameField.style.display = isBankAccount(value) ? '' : 'none';
+  }
+}
+
+const reportEntityInput = document.getElementById('reportEntityValue');
+if (reportEntityInput) {
+  reportEntityInput.addEventListener('input', () => detectBankAccount(reportEntityInput.value));
+}
+
+// ── Form submission helper ────────────────────────────────────────────────────
+async function submitReportForm({ entity_type, entity_value, bank_name, scam_type, notes, submitBtn }) {
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+
+  try {
+    const res = await fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity_type, entity_value, bank_name, scam_type, notes }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      // Show success toast
+      const toast = document.getElementById('reportSuccessToast');
+      if (toast) {
+        toast.style.display = '';
+        // Scroll toast into view
+        toast.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      // Refresh counter
+      fetchAndUpdateStats();
+
+      // Close panel after 2.5s
+      setTimeout(closeReportPanel, 2500);
+    } else {
+      alert('❌ ' + (data.error || 'Submission failed. Please try again.'));
+    }
+  } catch (err) {
+    alert('❌ Network error. Please try again.');
+    console.error('[report submit]', err);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit to community database';
+  }
+}
+
+// ── TAB 1 — Phone / account form ──────────────────────────────────────────────
+const reportFormPhone = document.getElementById('reportFormPhone');
+if (reportFormPhone) {
+  reportFormPhone.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const entity_value = (document.getElementById('reportEntityValue')?.value || '').trim();
+    const scam_type    = document.getElementById('reportScamType')?.value || '';
+    const bank_name    = document.getElementById('reportBankName')?.value || '';
+    const notes        = document.getElementById('reportNotes')?.value || '';
+
+    if (!entity_value) { alert('Please enter a phone number or account number.'); return; }
+    if (!scam_type)    { alert('Please select a scam type.'); return; }
+
+    const entity_type = isBankAccount(entity_value) ? 'bank_account' : 'phone_number';
+    const submitBtn   = document.getElementById('reportSubmitPhone');
+
+    await submitReportForm({ entity_type, entity_value, bank_name: entity_type === 'bank_account' ? bank_name : undefined, scam_type, notes, submitBtn });
+  });
+}
+
+// ── TAB 2 — URL / link form ───────────────────────────────────────────────────
+const reportFormUrl = document.getElementById('reportFormUrl');
+if (reportFormUrl) {
+  reportFormUrl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const entity_value = (document.getElementById('reportUrlValue')?.value || '').trim();
+    const scam_type    = document.getElementById('reportUrlScamType')?.value || '';
+    const notes        = document.getElementById('reportUrlNotes')?.value || '';
+
+    if (!entity_value) { alert('Please enter a URL or link.'); return; }
+    if (!scam_type)    { alert('Please select a scam type.'); return; }
+
+    const submitBtn = document.getElementById('reportSubmitUrl');
+    await submitReportForm({ entity_type: 'url', entity_value, scam_type, notes, submitBtn });
+  });
+}
+
+// ── TAB 3 — Screenshot form ───────────────────────────────────────────────────
+const reportDropzone       = document.getElementById('reportDropzone');
+const reportScreenshotInput = document.getElementById('reportScreenshotInput');
+const reportDropzonePreview = document.getElementById('reportDropzonePreview');
+let reportScreenshotData    = null;
+
+if (reportDropzone) {
+  reportDropzone.addEventListener('click', () => reportScreenshotInput && reportScreenshotInput.click());
+
+  reportDropzone.addEventListener('dragover', (e) => { e.preventDefault(); reportDropzone.classList.add('dragover'); });
+  reportDropzone.addEventListener('dragleave', () => reportDropzone.classList.remove('dragover'));
+  reportDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    reportDropzone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleReportDropzoneFile(file);
+  });
+}
+
+if (reportScreenshotInput) {
+  reportScreenshotInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) handleReportDropzoneFile(file);
+    reportScreenshotInput.value = '';
+  });
+}
+
+function handleReportDropzoneFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    reportScreenshotData = { base64: reader.result, mimeType: file.type };
+    if (reportDropzonePreview) {
+      reportDropzonePreview.src = reader.result;
+      reportDropzonePreview.style.display = '';
+    }
+    const inner = document.getElementById('reportDropzoneInner');
+    if (inner) inner.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+const reportFormScreenshot = document.getElementById('reportFormScreenshot');
+if (reportFormScreenshot) {
+  reportFormScreenshot.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    // Screenshot tab just sends a note — image uploads require extra infrastructure.
+    // Here we submit as a note-only report with entity_type='screenshot'
+    const notes     = (document.getElementById('reportScreenshotNotes')?.value || '').trim();
+    const submitBtn = document.getElementById('reportSubmitScreenshot');
+
+    if (!reportScreenshotData && !notes) {
+      alert('Please attach a screenshot or add a description.');
+      return;
+    }
+
+    await submitReportForm({
+      entity_type: 'screenshot',
+      entity_value: 'screenshot',
+      scam_type: 'CategoriesOther',
+      notes: notes || 'Screenshot submitted via community report.',
+      submitBtn,
+    });
+  });
+}
+
+// ── Modify addVerdict to inject HIGH RISK CTA strip ───────────────────────────
+// Wrap the existing addVerdict to append a CTA strip after HIGH RISK verdicts
+const _originalAddVerdict = addVerdict;
+// Redefine addVerdict globally
+window._addVerdictInternal = function(text, riskLevel, entityHint) {
+  const wrapper   = document.createElement('div');
+  const riskClass = riskLevel === 'HIGH' ? 'verdict-high' : riskLevel === 'MEDIUM' ? 'verdict-medium' : riskLevel === 'LOW' ? 'verdict-low' : '';
+  wrapper.className = `message bot-message ${riskClass}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message-avatar';
+  avatar.textContent = '🛡️';
+
+  const content = document.createElement('div');
+  content.className = 'message-content';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.textContent = text;
+
+  const time = document.createElement('span');
+  time.className = 'message-time';
+  time.textContent = new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
+
+  content.appendChild(bubble);
+
+  // Append CTA strip for HIGH RISK verdicts
+  if (riskLevel === 'HIGH') {
+    const cta = document.createElement('div');
+    cta.className = 'report-cta-strip';
+    const entity = entityHint || '';
+    cta.innerHTML =
+      `<span class="report-cta-text">Help protect others — report this scam 🛡</span>` +
+      `<button class="report-cta-btn" onclick="window.openReportPanelWithPrefill(${JSON.stringify(entity)})">Report</button>`;
+    content.appendChild(cta);
+  }
+
+  content.appendChild(time);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(content);
+  chatArea.appendChild(wrapper);
+  scrollToBottom();
+};
+

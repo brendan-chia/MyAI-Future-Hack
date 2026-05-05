@@ -1,5 +1,5 @@
-const { sendMessage } = require('./whatsapp');
-const { getGuardians, wasAlertSent, markAlertSent } = require('./queries');
+const { sendMessage } = require('../whatsapp');
+const { getGuardians, wasAlertSent, markAlertSent } = require('../queries');
 
 const SCAM_LABELS_BM = {
   MACAU_SCAM:      'Penipuan Macau (Pegawai Palsu)',
