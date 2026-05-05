@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -677,8 +678,7 @@
           Call
         </button>
         <button class="report-btn" id="reportBtn" title="Report a scam">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          Report
+          🚩 Report
         </button>
         <button class="call-end-btn" id="callEndBtn" title="End call" style="display:none">End Call</button>
         <div class="user-badge" id="userBadge" title="Account information" style="display:none">
@@ -693,14 +693,13 @@
       </div>
     </header>
 
-    <!-- Community report counter bar -->
+    <!-- Community Shield banner -->
     <div class="community-bar" id="communityBar">
       <div class="community-bar-left">
-        <span class="community-bar-dot"></span>
-        <span class="community-bar-label">Community reports</span>
+        🛡 Community Shield
       </div>
       <div class="community-bar-right">
-        <span class="community-bar-count"><span id="reportCount">0</span> report<span id="reportPlural">s</span> submitted</span>
+        <span id="reportCount">0</span> scam<span id="reportPlural">s</span> reported
       </div>
     </div>
 
@@ -975,13 +974,27 @@
         setTimeout(() => { submitBtn.textContent = 'Submit to community database'; }, 2500);
       }
     });
-    // Init counter from localStorage
+    // Init counter — fetch from /api/stats, fallback to localStorage
     (function initCounter() {
-      const count = parseInt(localStorage.getItem('communityReportCount') || '0', 10);
-      const countEl = document.getElementById('reportCount');
-      const pluralEl = document.getElementById('reportPlural');
-      if (countEl) countEl.textContent = count;
-      if (pluralEl) pluralEl.textContent = count === 1 ? '' : 's';
+      function setCount(n) {
+        const countEl = document.getElementById('reportCount');
+        const pluralEl = document.getElementById('reportPlural');
+        if (countEl) countEl.textContent = n;
+        if (pluralEl) pluralEl.textContent = n === 1 ? '' : 's';
+      }
+      // Optimistic: show localStorage value immediately
+      setCount(parseInt(localStorage.getItem('communityReportCount') || '0', 10));
+      // Then refresh from server
+      fetch('/api/stats')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) {
+            const serverCount = (data.community !== undefined ? data.community : 0)
+                              + (data.total !== undefined ? data.total : 0);
+            setCount(serverCount);
+          }
+        })
+        .catch(() => { /* keep localStorage value */ });
     })();
   })();
   </script>

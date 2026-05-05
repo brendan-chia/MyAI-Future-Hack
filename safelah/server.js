@@ -732,6 +732,23 @@ app.post('/api/search', async (req, res) => {
   }
 });
 
+// ── Public stats (community reports banner) ──────────────────────────────────
+app.get('/api/stats', (req, res) => {
+  try {
+    const db  = getDb();
+    // Community reports submitted via /api/report
+    const commRaw = db.exec(`SELECT COUNT(*) as n FROM scam_logs WHERE risk_level = 'COMMUNITY_REPORT'`);
+    const community = (commRaw && commRaw[0] && commRaw[0].values[0][0]) || 0;
+    // Total HIGH/MEDIUM AI-detected scams
+    const totalRaw = db.exec(`SELECT COUNT(*) as n FROM scam_logs WHERE risk_level IN ('HIGH','MEDIUM')`);
+    const total = (totalRaw && totalRaw[0] && totalRaw[0].values[0][0]) || 0;
+    res.json({ community, total });
+  } catch (err) {
+    console.error('[stats] error:', err);
+    res.json({ community: 0, total: 0 });
+  }
+});
+
 // ── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({

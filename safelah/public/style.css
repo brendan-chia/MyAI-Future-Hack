@@ -811,24 +811,60 @@ textarea::placeholder { color: var(--text-muted); }
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 11px;
-  background: rgba(245,158,11,0.10);
-  border: 1px solid rgba(245,158,11,0.28);
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #4ade80;
   border-radius: 6px;
-  color: #fcd34d;
-  font-size: 11px;
+  color: #4ade80;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
   white-space: nowrap;
   letter-spacing: 0.01em;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .report-btn:hover {
-  background: rgba(245,158,11,0.20);
-  border-color: rgba(245,158,11,0.5);
-  color: #fbbf24;
-  transform: scale(1.03);
+  background: #0f3d2e;
+}
+
+/* ── Community Shield banner ───────────────────────────────────────────────── */
+.community-bar {
+  flex-shrink: 0;
+  background: #0f3d2e;
+  border-bottom: 1px solid #1a5c3e;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.community-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4ade80;
+  letter-spacing: 0.01em;
+}
+
+.community-bar-right {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4ade80;
+}
+
+.community-bar--flash {
+  animation: barFlash 0.8s ease;
+}
+
+@keyframes barFlash {
+  0%, 100% { background: #0f3d2e; }
+  50%       { background: #1a5c3e; }
 }
 
 /* ── Report modal overlay ──────────────────────────────────────────────────── */
@@ -840,9 +876,9 @@ textarea::placeholder { color: var(--text-muted); }
   background: rgba(7,11,18,0.82);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 20px;
 }
 
 .report-overlay.active {
@@ -861,23 +897,17 @@ textarea::placeholder { color: var(--text-muted); }
   max-width: 480px;
   background: #111827;
   border: 1px solid rgba(99,155,210,0.14);
-  border-bottom: none;
-  border-radius: 20px 20px 0 0;
+  border-radius: 18px;
   display: flex;
   flex-direction: column;
-  max-height: 92dvh;
+  max-height: 88dvh;
   overflow: hidden;
-  animation: modalSlideUp 0.28s cubic-bezier(0.34,1.06,0.64,1);
+  animation: modalPopIn 0.28s cubic-bezier(0.34,1.06,0.64,1);
 }
 
-@keyframes modalSlideUp {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
-
-@media (min-height: 700px) {
-  .report-overlay { align-items: center; padding: 20px; }
-  .report-modal   { border-radius: 18px; border-bottom: 1px solid rgba(99,155,210,0.14); max-height: 88dvh; }
+@keyframes modalPopIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
 /* ── Modal header ──────────────────────────────────────────────────────────── */
