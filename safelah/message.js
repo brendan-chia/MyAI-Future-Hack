@@ -1,7 +1,7 @@
 const { sendMessage } = require('./whatsapp');
-const { analyseText } = require('./text');
-const { analyseImage } = require('./image');
-const { analyseAudio } = require('./audio');
+const { analyseText } = require('./services/text');
+const { analyseImage } = require('./services/image');
+const { analyseAudio } = require('./services/audio');
 const { handleCommand } = require('./commands');
 const { isFirstTimeUser, checkRateLimit, getSession, addMessageToBatch, addImageToBatch, addAudioToBatch } = require('./queries');
 const { processClarificationAnswer, processClarificationAnswerForConversation } = require('./sessionManager');

@@ -28,11 +28,6 @@ const SCAM_LABELS = {
 function buildVerdict(analysisResult, ccidResult, lang = 'bm', vertexResult = null) {
   const { risk_level, scam_type, reason_bm, reason_en } = analysisResult;
   const label    = SCAM_LABELS[lang]?.[scam_type] || SCAM_LABELS[lang]?.UNKNOWN_SCAM || '';
-  const ccidNote = ccidResult?.found
-    ? (lang === 'bm'
-        ? `\n\nNombor ini ada ${ccidResult.reports} laporan dalam pangkalan data PDRM Semak Mule.`
-        : `\n\nThis number has ${ccidResult.reports} report(s) in PDRM's Semak Mule database.`)
-    : '';
 
   // Use vertexResult from analysisResult if not passed directly
   const vtx = vertexResult || analysisResult.vertexResult;
@@ -42,7 +37,7 @@ function buildVerdict(analysisResult, ccidResult, lang = 'bm', vertexResult = nu
         : `\n📊 ${vtx.hits} matching record(s) found in SafeLah database.`)
     : '';
 
-  const combinedNote = ccidNote + vertexNote;
+  const combinedNote = vertexNote;
 
   switch (risk_level) {
     case 'HIGH':   return buildHigh(lang, label, reason_bm, reason_en, combinedNote);
@@ -61,8 +56,8 @@ function buildHigh(lang, label, reasonBM, reasonEN, ccidNote) {
 
 function buildMedium(lang, label, reasonBM, reasonEN, ccidNote) {
   const t = {
-    bm: `⚠️ BERHATI-HATI: Mesej ini mencurigakan\n\nJenis syak: ${label}\nSebab: ${reasonBM}${ccidNote}\n\nDisyorkan:\n1. Sahkan dengan pihak berkenaan melalui nombor RASMI (bukan nombor dalam mesej ini)\n2. Tanya pendapat ahli keluarga dahulu\n3. Semak di: semakmule.rmp.gov.my\n\nKalau masih ragu-ragu, jangan bayar dulu.`,
-    en: `⚠️ CAUTION: This message looks suspicious\n\nSuspected type: ${label}\nReason: ${reasonEN}${ccidNote}\n\nRecommended:\n1. Verify through official channels (NOT numbers in this message)\n2. Ask a family member first\n3. Check at: semakmule.rmp.gov.my\n\nWhen in doubt, don't pay.`,
+    bm: `⚠️ BERHATI-HATI: Mesej ini mencurigakan\n\nJenis syak: ${label}\nSebab: ${reasonBM}${ccidNote}\n\nDisyorkan:\n1. Sahkan dengan pihak berkenaan melalui nombor RASMI (bukan nombor dalam mesej ini)\n2. Tanya pendapat ahli keluarga dahulu\n\nKalau masih ragu-ragu, jangan bayar dulu.`,
+    en: `⚠️ CAUTION: This message looks suspicious\n\nSuspected type: ${label}\nReason: ${reasonEN}${ccidNote}\n\nRecommended:\n1. Verify through official channels (NOT numbers in this message)\n2. Ask a family member first\n\nWhen in doubt, don't pay.`,
   };
   return t[lang] || t.bm;
 }

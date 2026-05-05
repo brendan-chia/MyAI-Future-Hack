@@ -331,7 +331,7 @@ app.post('/api/analyse', async (req, res) => {
     }
 
     const from = sessionId || req.session?.username || 'web-user';
-    const { analyseTextDirect } = require('./text');
+    const { analyseTextDirect } = require('./services/text');
     const result = await analyseTextDirect(from, text);
 
     // If user is logged-in and has a guardian, push alert for HIGH/MEDIUM
@@ -396,7 +396,7 @@ app.post('/api/flow', async (req, res) => {
       return res.status(400).json({ error: 'No text provided' });
     }
 
-    const { runScamDetectionFlow } = require('./text');
+    const { runScamDetectionFlow } = require('./services/text');
     const result = await runScamDetectionFlow({
       text: text.trim(),
       phone: sessionId || 'web-user',
@@ -433,7 +433,7 @@ app.post('/api/analyse-image', async (req, res) => {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     const mime = mimeType || 'image/jpeg';
 
-    const result = await require('./image').analyseImageDirect(base64Data, mime);
+    const result = await require('./services/image').analyseImageDirect(base64Data, mime);
 
     // If user is logged-in and has a guardian, push alert for HIGH/MEDIUM
     let alertSent = false;
@@ -557,13 +557,13 @@ app.post('/api/analyse-batch', async (req, res) => {
       return res.status(400).json({ error: 'No messages provided' });
     }
 
-    const { extractTextFromImage, analyseConversationWithGemini } = require('./gemini');
+    const { extractTextFromImage, analyseConversationWithGemini } = require('./services/gemini');
     const { keywordAnalyse } = require('./keywordFallback');
     const { extractEntities } = require('./extractor');
     const { buildVerdict } = require('./verdictBuilder');
     const { logScamIntelligence } = require('./queries');
     const { detectLanguage } = require('./language');
-    const { runScamDetectionFlow } = require('./text');
+    const { runScamDetectionFlow } = require('./services/text');
 
     console.log(`[batch-web] Processing ${messages.length} messages from ${sessionId || 'web-user'}`);
 
@@ -630,22 +630,14 @@ app.post('/api/analyse-batch', async (req, res) => {
 
     if (checkTarget) {
       try {
-        const { checkSemakMule } = require('./semakmule');
         const { searchVertexAI } = require('./vertexSearch');
-        const category = conversationResult.extracted_phones[0] ? 'phone' : 'bank';
-        const [ccid, vertex] = await Promise.all([
-          checkSemakMule(checkTarget, category),
-          searchVertexAI(checkTarget),
-        ]);
-        ccidResult = ccid;
+        const vertex = await searchVertexAI(checkTarget);
         vertexResult = vertex;
 
-        if (ccidResult.found && conversationResult.risk_level === 'LOW') conversationResult.risk_level = 'MEDIUM';
-        if (ccidResult.reports >= 3) conversationResult.risk_level = 'HIGH';
         if (vertexResult.found && conversationResult.risk_level === 'LOW') conversationResult.risk_level = 'MEDIUM';
         if (vertexResult.hits >= 3) conversationResult.risk_level = 'HIGH';
       } catch (err) {
-        console.warn('[batch-web] CCID/Vertex check failed:', err.message);
+        console.warn('[batch-web] Vertex check failed:', err.message);
       }
     }
 
