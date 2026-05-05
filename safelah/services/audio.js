@@ -3,7 +3,7 @@ const { sendMessage, downloadMedia } = require('../whatsapp');
 const { buildVerdict }            = require('../verdictBuilder');
 const { runScamDetectionFlow }    = require('./text');
 const { detectLanguage }          = require('../language');
-const { notifyGuardians }         = require('../guardian');
+const { notifyGuardians }         = require('./guardian');
 const { logScamIntelligence }     = require('../queries');
 
 async function analyseAudio(from, message) {
