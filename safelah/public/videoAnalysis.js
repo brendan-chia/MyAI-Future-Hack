@@ -29,6 +29,9 @@ window.runVideoAnalysis = async function(videoFile) {
     return;
   }
 
+  // ── Check if batch mode is active ────────────────────────────────────────
+  const inBatchMode = typeof batchMode !== 'undefined' && batchMode;
+
   // Show user bubble
   const userBubble = document.createElement('div');
   userBubble.className = 'message user-message';
@@ -51,11 +54,13 @@ window.runVideoAnalysis = async function(videoFile) {
     'Step 4/4: Generating verdict…',
   ];
   let stepIdx = 0;
-  const thinking = addVideoThinking(steps[0]);
+  const thinking = addVideoThinking(
+    inBatchMode ? '🎬 Analyzing video for batch…' : steps[0]
+  );
   const stepInterval = setInterval(() => {
     stepIdx = Math.min(stepIdx + 1, steps.length - 1);
     const label = thinking.querySelector('.video-step-label');
-    if (label) label.textContent = steps[stepIdx];
+    if (label) label.textContent = inBatchMode ? '🎬 Analyzing video for batch…' : steps[stepIdx];
   }, 12000);
 
   try {
@@ -67,13 +72,40 @@ window.runVideoAnalysis = async function(videoFile) {
       method: 'POST',
       credentials: 'include',
       body: formData,
-      // Do NOT set Content-Type — browser sets it with boundary automatically
     });
     clearInterval(stepInterval);
     thinking.remove();
 
     const data = await res.json();
-    addVideoAnalysisCard(data, fileName);
+
+    if (inBatchMode) {
+      // ── Batch mode: collect video result into batch queue ───────────────
+      const videoSummary = buildVideoSummaryForBatch(data, fileName);
+      if (typeof batchMessages !== 'undefined') {
+        batchMessages.push({
+          type: 'video',
+          text: videoSummary,
+          fileName,
+          preliminary_risk: data.final_verdict,   // SCAM / HIGH_RISK / SUSPICIOUS / SAFE
+          preliminary_score: data.final_risk_score ?? 0,
+        });
+      }
+      // Show compact confirmation
+      const riskLabel = { SCAM: '🚨 SCAM', HIGH_RISK: '🔶 HIGH RISK', SUSPICIOUS: '⚠️ SUSPICIOUS', SAFE: '✅ SAFE' }[data.final_verdict] || '❓ ' + (data.final_verdict || 'UNKNOWN');
+      const textCount = batchMessages.filter(m => m.type === 'text').length;
+      const imgCount  = batchMessages.filter(m => m.type === 'image').length;
+      const vidCount  = batchMessages.filter(m => m.type === 'video').length;
+      addBotMessage(
+        `✅ Video collected (preliminary: ${riskLabel})\n` +
+        `Transcript captured for combined analysis.\n\n` +
+        `Collected so far: ${textCount} messages, ${imgCount} images, ${vidCount} videos\n\n` +
+        `  /analyze — analyze everything together\n` +
+        `  /cancel  — cancel`
+      );
+    } else {
+      // ── Normal mode: show full analysis card ────────────────────────────
+      addVideoAnalysisCard(data, fileName);
+    }
   } catch (err) {
     clearInterval(stepInterval);
     thinking.remove();
@@ -81,6 +113,23 @@ window.runVideoAnalysis = async function(videoFile) {
     console.error('[video] analysis error:', err);
   }
 };
+
+// ── Build a text summary of video analysis for use in batch context ───────────
+function buildVideoSummaryForBatch(data, fileName) {
+  const ta = data.transcript_analysis || {};
+  const va = data.visual_analysis || {};
+  const lines = [
+    `[VIDEO EVIDENCE: ${fileName}]`,
+    `Preliminary verdict: ${data.final_verdict || 'UNKNOWN'} (Risk score: ${data.final_risk_score ?? '?'}/100)`,
+  ];
+  if (ta.transcript) lines.push(`Audio transcript: "${ta.transcript.slice(0, 500)}${ta.transcript.length > 500 ? '…' : ''}"`);
+  if (ta.transcript_verdict) lines.push(`Transcript scam verdict: ${ta.transcript_verdict}`);
+  if (ta.scam_indicators && ta.scam_indicators.length) lines.push(`Scam indicators in audio: ${ta.scam_indicators.join(', ')}`);
+  if (va.visual_verdict) lines.push(`Visual forensics: ${va.visual_verdict} (${va.visual_confidence ?? '?'}% confidence)`);
+  if (va.visual_explanation) lines.push(`Visual analysis: ${va.visual_explanation.slice(0, 200)}`);
+  if (data.final_explanation) lines.push(`Summary: ${data.final_explanation.slice(0, 300)}`);
+  return lines.join('\n');
+}
 
 // ── URL analysis ─────────────────────────────────────────────────────────────
 window.runVideoURLAnalysis = async function(url) {

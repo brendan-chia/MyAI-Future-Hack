@@ -11,6 +11,7 @@ const SCAM_LABELS = {
     CRYPTO_SCAM:             'Penipuan Kripto / Pelaburan Digital',
     FAMILY_EMERGENCY_SCAM:   'Penipuan Kecemasan Keluarga (Nombor Baru)',
     PAYMENT_SCAM:            'Penipuan Pembayaran QR / DuitNow',
+    VIDEO_SCAM:              'Penipuan Video (Deepfake / AI-Generated)',
     UNKNOWN_SCAM:            'Penipuan (Jenis Tidak Diketahui)',
   },
   en: {
@@ -25,6 +26,7 @@ const SCAM_LABELS = {
     CRYPTO_SCAM:             'Crypto / Digital Investment Scam',
     FAMILY_EMERGENCY_SCAM:   'Family Emergency Impersonation Scam',
     PAYMENT_SCAM:            'Fake QR Payment / DuitNow Scam',
+    VIDEO_SCAM:              'Video Scam (Deepfake / AI-Generated)',
     UNKNOWN_SCAM:            'Scam (Type Unknown)',
   },
 };

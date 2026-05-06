@@ -570,8 +570,18 @@ app.post('/api/analyse-batch', async (req, res) => {
 
     console.log(`[batch-web] Processing ${messages.length} messages from ${sessionId || 'web-user'}`);
 
-    // Step 1: Enrich messages — extract text from images
+    // Step 1: Enrich messages — extract text from images, pass video summaries as context
     const enrichedMessages = await Promise.all(messages.map(async (msg, idx) => {
+      // Video: pre-analyzed on frontend, text field contains full summary
+      if (msg.type === 'video') {
+        return {
+          type: 'video',
+          text: msg.text || '[Video: no summary available]',
+          visual_cues: `Video file: ${msg.fileName || 'unknown'}. Pre-analyzed by video forensics pipeline.`,
+          preliminary_risk: msg.preliminary_risk || null,   // SCAM/HIGH_RISK/SUSPICIOUS/SAFE
+          preliminary_score: msg.preliminary_score ?? 0,
+        };
+      }
       if (msg.type === 'image' && msg.image) {
         try {
           const base64Data = msg.image.replace(/^data:image\/\w+;base64,/, '');
@@ -604,6 +614,33 @@ app.post('/api/analyse-batch', async (req, res) => {
       const combinedText = enrichedMessages.map(m => m.text).join('\n\n');
       conversationResult = keywordAnalyse(combinedText);
       conversationResult.source = 'keyword_fallback';
+    }
+
+    // Step 2b: Video pre-analysis escalation
+    // The video deepfake/transcript pipeline is more reliable for video content than
+    // the text-based conversation analysis. If ANY video was flagged SCAM or HIGH_RISK,
+    // hard-escalate the final verdict to at least MEDIUM (and HIGH for SCAM).
+    const videoItems = enrichedMessages.filter(m => m.type === 'video' && m.preliminary_risk);
+    for (const vid of videoItems) {
+      const pr = vid.preliminary_risk; // SCAM / HIGH_RISK / SUSPICIOUS / SAFE
+      console.log(`[batch-web] Video pre-analysis: ${pr} (score: ${vid.preliminary_score})`);
+      if (pr === 'SCAM') {
+        conversationResult.risk_level = 'HIGH';
+        conversationResult.scam_type = conversationResult.scam_type || 'VIDEO_SCAM';
+        conversationResult.reason_en = `Video forensics detected a SCAM video (deepfake/AI-generated or scam transcript). ${conversationResult.reason_en || ''}`;
+        conversationResult.reason_bm = `Forensik video mengesan video PENIPUAN (AI-generated/deepfake atau transkrip scam). ${conversationResult.reason_bm || ''}`;
+        conversationResult.confidence = Math.max(conversationResult.confidence || 0, vid.preliminary_score / 100);
+      } else if (pr === 'HIGH_RISK' && conversationResult.risk_level !== 'HIGH') {
+        conversationResult.risk_level = 'HIGH';
+        conversationResult.scam_type = conversationResult.scam_type || 'VIDEO_SCAM';
+        conversationResult.reason_en = `Video forensics detected HIGH RISK content. ${conversationResult.reason_en || ''}`;
+        conversationResult.reason_bm = `Forensik video mengesan kandungan RISIKO TINGGI. ${conversationResult.reason_bm || ''}`;
+        conversationResult.confidence = Math.max(conversationResult.confidence || 0, vid.preliminary_score / 100);
+      } else if (pr === 'SUSPICIOUS' && conversationResult.risk_level === 'LOW') {
+        conversationResult.risk_level = 'MEDIUM';
+        conversationResult.reason_en = `Video forensics flagged suspicious content. ${conversationResult.reason_en || ''}`;
+        conversationResult.reason_bm = `Forensik video mengesan kandungan mencurigakan. ${conversationResult.reason_bm || ''}`;
+      }
     }
 
     // Step 3: Extract entities from all messages
@@ -688,6 +725,12 @@ app.post('/api/analyse-batch', async (req, res) => {
           }
         }
       } catch (alertErr) { console.warn('[batch alert] error:', alertErr.message); }
+    } else {
+      if (!req.session?.userId) {
+        console.log(`[batch alert] ⚠️ No session — user not logged in, cannot push alert`);
+      } else {
+        console.log(`[batch alert] ℹ️ Risk=${conversationResult.risk_level} — no alert threshold reached`);
+      }
     }
 
     console.log(`[batch-web] Result — risk: ${conversationResult.risk_level}, type: ${conversationResult.scam_type}`);
