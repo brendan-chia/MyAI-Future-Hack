@@ -31,10 +31,18 @@ const HIGH_RISK_PATTERNS = [
     reason_en: 'This message pressures you to pay within a time limit — a scam tactic.' },
 
   // ── Lucky draw / prize ──
+  { pattern: /congratulations.{0,120}(gift.?card|amazon|facebook user|claim your prize|reserved.{0,20}for you|click.*continue|klik.*continue)/i,
+    type: 'LUCKY_DRAW',
+    reason_bm: 'Mesej ini mendakwa anda memenagi hadiah (Amazon/Gift Card/dll) — penipuan cabutan bertuah.',
+    reason_en: 'This message falsely claims you won a prize (Amazon/Gift Card/etc.) — a fake lucky draw scam.' },
   { pattern: /tahniah.*menang|congratulations.*won|lucky draw.*klik|hadiah.*RM\s*[\d,]+/i,
     type: 'LUCKY_DRAW',
     reason_bm: 'Mesej ini mendakwa anda memenangi hadiah — penipuan cabutan bertuah.',
     reason_en: 'This message claims you won a prize — a fake lucky draw scam.' },
+  { pattern: /(gift.?card|amazon|shopee|lazada).{0,80}(claim|redeem|click|klik|continue|collect).{0,80}(minute|second|minit|saat|\d+\s*(min|sec))/i,
+    type: 'LUCKY_DRAW',
+    reason_bm: 'Mesej ini menawarkan hadiah dengan pautan dan kiraan masa menurun — penipuan.',
+    reason_en: 'This message offers a prize with a link and countdown timer — a scam.' },
 
   // ── Phishing URLs ──
   { pattern: /bit\.ly\/|tinyurl\.com\/|rb\.gy\/|cutt\.ly\//i,
