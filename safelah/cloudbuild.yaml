@@ -1,10 +1,33 @@
 steps:
+  # 1. Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/safelah', '.']
+
+  # 2. Push to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/safelah']
-  - name: 'gcr.io/cloud-builders/gke-deploy'
-    args: ['run', '--filename=.', '--image=gcr.io/$PROJECT_ID/safelah', '--location=asia-southeast1']
+
+  # 3. Deploy to Cloud Run
+  #    --timeout=3600     : video analysis can take up to 60 s per video; allow long sessions
+  #    --memory=2Gi       : ffmpeg + Gemini + GCS client in-memory
+  #    --cpu=2            : concurrent Steps 2+3 per video
+  #    --concurrency=10   : max simultaneous requests per instance
+  #    --no-allow-unauthenticated: remove if you want a public endpoint
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - safelah
+      - --image=gcr.io/$PROJECT_ID/safelah
+      - --region=asia-southeast1
+      - --platform=managed
+      - --timeout=3600
+      - --memory=2Gi
+      - --cpu=2
+      - --concurrency=10
+      - --allow-unauthenticated
+      - --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_REGION=us-central1,SKIP_WHATSAPP=true
 
 images:
   - 'gcr.io/$PROJECT_ID/safelah'

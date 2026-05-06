@@ -11,9 +11,17 @@ const ai = genkit({
 // ── System instruction ───────────────────────────────────────────────────────
 const SYSTEM_INSTRUCTION = `You are SafeLah, a Malaysian scam detection AI. Analyse messages for scam indicators targeting Malaysian users.
 
+⚠️ HIGHEST PRIORITY — FAMILY EMERGENCY SCAM (extremely common in Malaysia):
+A scammer contacts you pretending to be a family member (child, sibling, relative) from a new/unknown number, saying their phone is spoilt/lost/broken. They then describe an emergency (accident, arrested, hospital, hit someone's car, police involved) and urgently request money to "settle" the problem privately — often asking you to keep it secret from other family members. This is ALWAYS a scam. Flag as HIGH risk whenever you see:
+- New phone number + claim to be family member + emergency + money request
+- "phone spoil/rosak/broken" + accident/police/arrest + pay/bayar/settle/RM amount
+- Urgency + "don't tell papa/mama/anyone" + money request
+- "Help me first" / "you help me first cannot" + financial amount
+
 IMPORTANT: E-commerce task scams (JOB_SCAM) are EXTREMELY common in Malaysia right now. Messages recruiting people to "click orders", "write reviews", "boost ratings", or "complete tasks" for e-commerce platforms (Shopee, Lazada, TikTok Shop, Amazon, etc.) for unrealistic daily pay are ALWAYS HIGH RISK scams. Flag them aggressively.
 
 Malaysian scam types:
+- FAMILY_EMERGENCY_SCAM: Impersonating a family member from a new number, claiming accident/arrest/hospital emergency, requesting urgent money transfer, asking for secrecy. The tone may be polite and emotional — this does NOT make it less dangerous.
 - MACAU_SCAM: Impersonating PDRM, BNM, LHDN, Jabatan Kastam, courts. Claims of money laundering, arrest warrants, frozen accounts. Demands money to "resolve" legal issues.
 - LOVE_SCAM: Romantic interest from strangers, requests for money for emergencies, hospital bills, travel, "investment opportunities".
 - INVESTMENT_SCAM: Guaranteed high returns, Shariah-compliant scams, Telegram/WhatsApp VIP groups, crypto/forex, celebrity endorsements, deposit to personal accounts.
@@ -29,13 +37,14 @@ Malaysian scam types:
 - PHISHING_LINK: URLs mimicking Maybank2u, CIMB Clicks, RHB, Public Bank, MyEG, SSM, or other gov portals.
 - LUCKY_DRAW: Fake prize wins, suspicious collection location or link, processing fee required.
 - CRYPTO_SCAM: NFT investment, crypto platforms, DeFi groups.
+- PAYMENT_SCAM: DuitNow QR codes with countdown timers presented as proof of payment — actually charging the victim.
 
 Red flags (any = elevated risk):
-- Urgency: "segera", "24 jam", "hari ini sahaja", "URGENT", "IMMEDIATELY"
-- Authority: "PDRM", "polis", "mahkamah", "Bank Negara", "LHDN", "kastam"
+- Urgency: "segera", "24 jam", "hari ini sahaja", "URGENT", "IMMEDIATELY", "rushing me"
+- Authority: "PDRM", "polis", "mahkamah", "Bank Negara", "LHDN", "kastam", "lawyer", "peguam"
 - Reward: "tahniah", "menang", "hadiah", "prize", "lucky draw", "congratulations"
-- Secrecy: "jangan beritahu", "rahsia", "don't tell anyone"
-- Money requests paired with unverified strangers: "transfer", "bank in", "bayar", "deposit"
+- Secrecy: "jangan beritahu", "rahsia", "don't tell anyone", "jangan bagitau papa/mama"
+- Money requests paired with unverified strangers: "transfer", "bank in", "bayar", "deposit", "settle"
 - Shortened/suspicious URLs: bit.ly, tinyurl, random-string domains, non-.gov.my for official claims
 - Job recruitment via WhatsApp: Unsolicited job offers via WhatsApp, asking to add manager number, wa.me links, personal contact for recruitment
 - Unrealistic salary: RM200-500/day or RM3000-15000/month for simple online tasks
@@ -69,13 +78,13 @@ const SAFETY_SETTINGS = [
 
 function getModel() {
   return genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_INSTRUCTION,
     safetySettings: SAFETY_SETTINGS,
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA,
-      maxOutputTokens: 500,
+      maxOutputTokens: 1000,
       temperature: 0.1,
     },
   });
@@ -98,9 +107,11 @@ async function analyseWithGemini(text, visualContext = '', retries = 2) {
     try {
       const model = getModel();
       const result = await model.generateContent(prompt);
-      return JSON.parse(result.response.text());
+      const parsed = JSON.parse(result.response.text());
+      console.log(`[gemini text] ✅ risk=${parsed.risk_level}, type=${parsed.scam_type}, conf=${parsed.confidence}`);
+      return parsed;
     } catch (err) {
-      console.error(`[gemini text] attempt ${i + 1} failed:`, err.message);
+      console.error(`[gemini text] ❌ attempt ${i + 1} failed: ${err.message}`);
       if (i < retries) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
     }
   }
@@ -143,7 +154,7 @@ async function extractTextFromImage(base64Image, mimeType = 'image/jpeg', retrie
   for (let i = 0; i <= retries; i++) {
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         safetySettings: SAFETY_SETTINGS,
         generationConfig: {
           responseMimeType: 'application/json',
@@ -172,10 +183,10 @@ async function extractTextFromImage(base64Image, mimeType = 'image/jpeg', retrie
 async function analyseImageWithGemini(base64Image, mimeType = 'image/jpeg', retries = 2) {
   for (let i = 0; i <= retries; i++) {
     try {
-      const model = getModel();
+      const model = getModel(); // uses gemini-2.5-flash
       const result = await model.generateContent([
         { inlineData: { mimeType, data: base64Image } },
-        'Analyse this screenshot for scam indicators. Extract any phone numbers, bank accounts, or URLs visible.',
+        'Analyse this screenshot for scam indicators. Extract any phone numbers, bank accounts, or URLs visible. Look for: fake prize/lottery notices, DuitNow QR codes used for scam payments, urgency banners, Amazon/Shopee gift card claims, government impersonation.',
       ]);
       return JSON.parse(result.response.text());
     } catch (err) {
@@ -188,31 +199,38 @@ async function analyseImageWithGemini(base64Image, mimeType = 'image/jpeg', retr
 
 // ── Conversation analysis (multiple messages with sequential context) ────────
 async function analyseConversationWithGemini(messages, retries = 2) {
-  // Format messages with sequence context
+  // Format messages — include visual_cues from image extraction
   const conversationText = messages
-    .map((msg, idx) => `[Message ${idx + 1}]:\n${msg.text}`)
+    .map((msg, idx) => {
+      let entry = `[Item ${idx + 1} — type: ${msg.type || 'text'}]:\n${msg.text || '(no text)'}`;
+      if (msg.visual_cues) entry += `\n[Visual cues from image: ${msg.visual_cues}]`;
+      return entry;
+    })
     .join('\n\n---\n\n');
 
-  const prompt = `Analyze this sequence of messages (received in order) for scam indicators. 
-Consider how the messages build on each other and form a scam pattern:
+  const prompt = `You are SafeLah, a Malaysian scam detection AI. Analyse this batch of messages/images for scam indicators.
 
 ${conversationText}
 
-IMPORTANT: These messages were sent in sequence. Look for:
-1. Progressive escalation (initial offer → request for money)
-2. Coordinated scam tactics across multiple messages
-3. How one message sets up the context for the next
-4. Urgency or pressure building across the conversation
+CRITICAL PATTERNS TO DETECT (any of these alone = HIGH risk):
+1. FAMILY EMERGENCY / SOCIAL ENGINEERING: Messages claiming to be a family member with a new number, then describing an urgent crisis (accident, arrest, hospital) and requesting money. This is an extremely common Malaysian scam.
+   Signals: "new number", "phone spoil/rosak", "accident", "hospital", "police", "pay first", "help me first", urgency + money + unverified sender
+2. LUCKY DRAW / PRIZE: Congratulations for prizes (Amazon gift cards, cash prizes), urgent countdown, requests to click a link or pay a processing fee.
+3. DUITNOW QR SCAM: QR codes presented as payment receipts to COLLECT money but actually charge the victim. Fake countdown timers. "I've completed the payment" buttons.
+4. IMAGE SCAM INDICATORS: If visual cues mention QR codes, countdown timers, prize notices, DuitNow, payment screens — treat as HIGH risk.
+5. ANY combination of: (a) claimed urgency + (b) money/payment request + (c) unknown/unverified sender = HIGH risk.
 
-Provide ONE overall verdict for this conversation as a whole AND identify if this is part of a coordinated scam campaign.`;
+Provide ONE overall verdict for this entire batch. Judge the WORST item — if ANY single item is HIGH risk, the overall verdict must be HIGH.`;
 
   for (let i = 0; i <= retries; i++) {
     try {
       const model = getModel();
       const result = await model.generateContent(prompt);
-      return JSON.parse(result.response.text());
+      const parsed = JSON.parse(result.response.text());
+      console.log(`[gemini conversation] ✅ risk=${parsed.risk_level}, type=${parsed.scam_type}, conf=${parsed.confidence}`);
+      return parsed;
     } catch (err) {
-      console.error(`[gemini conversation] attempt ${i + 1} failed:`, err.message);
+      console.error(`[gemini conversation] ❌ attempt ${i + 1} failed: ${err.message}`);
       if (i < retries) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
     }
   }
@@ -224,11 +242,11 @@ async function analyseAudioWithGemini(base64Audio, mimeType = 'audio/ogg', retri
   for (let i = 0; i <= retries; i++) {
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-2.5-flash',
         safetySettings: SAFETY_SETTINGS,
         generationConfig: {
           responseMimeType: 'application/json',
-          responseSchema: EXTRACTION_SCHEMA, // reuse same schema as image extraction
+          responseSchema: EXTRACTION_SCHEMA,
           maxOutputTokens: 1000,
           temperature: 0.1,
         },

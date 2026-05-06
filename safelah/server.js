@@ -15,9 +15,12 @@ const expressWs = require('express-ws')(app);
 console.log('[server] express-ws initialized');
 
 // ── Core Middleware ─────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '250mb' }));  // enlarged for video base64 uploads
+app.use(express.urlencoded({ extended: false, limit: '250mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Video analysis routes (new feature — does not touch existing routes) ─────
+app.use('/api/video', require('./routes/videoRoutes'));
 
 // ── Session middleware ───────────────────────────────────────────────────────
 app.use(session({
@@ -515,7 +518,7 @@ app.post('/api/transcribe', async (req, res) => {
     // Use Gemini's native audio understanding — no Cloud Speech credentials needed
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `You are a transcription engine for a Malaysian scam-detection app.
 

@@ -2,6 +2,9 @@
   "dependencies": {
     "@genkit-ai/googleai": "^1.28.0",
     "@google-cloud/speech": "^7.3.0",
+    "@google-cloud/storage": "^7.19.0",
+    "@google-cloud/video-intelligence": "^6.2.2",
+    "@google-cloud/vision": "^5.3.6",
     "genkit": "^1.31.0"
   }
 }

@@ -730,9 +730,17 @@
             <polyline points="21 15 16 10 5 21"/>
           </svg>
         </label>
+        <!-- Video upload button (new) -->
+        <label class="attach-btn" id="videoAttachBtn" title="Analyse video for scams &amp; deepfakes" style="color:var(--sky)">
+          <input type="file" accept="video/*,.mp4,.mov,.avi,.webm,.mkv" id="videoInput" hidden>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+        </label>
         <textarea
           id="messageInput"
-          placeholder="Paste suspicious message, or type /register…"
+          placeholder="Paste suspicious message, URL or /video &lt;url&gt;…"
           rows="1"
           autofocus
         ></textarea>
@@ -743,7 +751,7 @@
           </svg>
         </button>
       </div>
-      <p class="input-hint">Type <strong>/start</strong> for batch · <strong>/register</strong> or <strong>/login</strong> · Drop a screenshot</p>
+      <p class="input-hint">Type <strong>/start</strong> for batch · <strong>/register</strong> or <strong>/login</strong> · 🎬 <strong>/video &lt;url&gt;</strong> to analyse video</p>
     </footer>
   </div>
 
@@ -997,6 +1005,34 @@
         .catch(() => { /* keep localStorage value */ });
     })();
   })();
+  </script>
+  <!-- Video analysis module -->
+  <script src="videoAnalysis.js"></script>
+  <script>
+    // Wire video file input to analysis pipeline
+    (function() {
+      const vi = document.getElementById('videoInput');
+      if (!vi) return;
+      vi.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        vi.value = '';
+        if (typeof runVideoAnalysis === 'function') runVideoAnalysis(file);
+      });
+    })();
+
+    // Wire /video <url> slash command into existing handleSlashCommand
+    const _origHandleSlashCmd = handleSlashCommand;
+    window.handleSlashCommand = async function(cmd) {
+      const lower = cmd.toLowerCase().trim();
+      if (lower.startsWith('/video ')) {
+        const url = cmd.trim().slice(7).trim();
+        if (!url) { addBotMessage('Usage: /video <url>'); return; }
+        if (typeof runVideoURLAnalysis === 'function') runVideoURLAnalysis(url);
+        return;
+      }
+      return _origHandleSlashCmd(cmd);
+    };
   </script>
 </body>
 </html>
