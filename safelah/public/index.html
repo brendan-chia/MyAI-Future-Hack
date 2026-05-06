@@ -964,8 +964,7 @@
           // Increment community report counter
           const countEl = document.getElementById('reportCount');
           const pluralEl = document.getElementById('reportPlural');
-          let count = parseInt(localStorage.getItem('communityReportCount') || '0', 10) + 1;
-          localStorage.setItem('communityReportCount', count);
+          let count = parseInt(countEl.textContent || '0', 10) + 1;
           countEl.textContent = count;
           if (pluralEl) pluralEl.textContent = count === 1 ? '' : 's';
           // Animate the bar
@@ -982,7 +981,7 @@
         setTimeout(() => { submitBtn.textContent = 'Submit to community database'; }, 2500);
       }
     });
-    // Init counter — fetch from /api/stats, fallback to localStorage
+    // Init counter — fetch from /api/stats
     (function initCounter() {
       function setCount(n) {
         const countEl = document.getElementById('reportCount');
@@ -990,9 +989,8 @@
         if (countEl) countEl.textContent = n;
         if (pluralEl) pluralEl.textContent = n === 1 ? '' : 's';
       }
-      // Optimistic: show localStorage value immediately
-      setCount(parseInt(localStorage.getItem('communityReportCount') || '0', 10));
-      // Then refresh from server
+      
+      // Fetch refresh from server
       fetch('/api/stats')
         .then(r => r.ok ? r.json() : null)
         .then(data => {
@@ -1002,7 +1000,7 @@
             setCount(serverCount);
           }
         })
-        .catch(() => { /* keep localStorage value */ });
+        .catch(() => { /* keep default value */ });
     })();
   })();
   </script>
