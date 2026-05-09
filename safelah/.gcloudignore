@@ -6,3 +6,8 @@ node_modules/
 .wwebjs_cache/
 .env
 *.db
+# Never ship service-account keys — use Secret Manager or Workload Identity instead
+credentials/
+*-credentials.json
+*-service-account.json
+safelah-*.json

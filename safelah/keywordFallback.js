@@ -31,10 +31,18 @@ const HIGH_RISK_PATTERNS = [
     reason_en: 'This message pressures you to pay within a time limit — a scam tactic.' },
 
   // ── Lucky draw / prize ──
+  { pattern: /congratulations.{0,120}(gift.?card|amazon|facebook user|claim your prize|reserved.{0,20}for you|click.*continue|klik.*continue)/i,
+    type: 'LUCKY_DRAW',
+    reason_bm: 'Mesej ini mendakwa anda memenagi hadiah (Amazon/Gift Card/dll) — penipuan cabutan bertuah.',
+    reason_en: 'This message falsely claims you won a prize (Amazon/Gift Card/etc.) — a fake lucky draw scam.' },
   { pattern: /tahniah.*menang|congratulations.*won|lucky draw.*klik|hadiah.*RM\s*[\d,]+/i,
     type: 'LUCKY_DRAW',
     reason_bm: 'Mesej ini mendakwa anda memenangi hadiah — penipuan cabutan bertuah.',
     reason_en: 'This message claims you won a prize — a fake lucky draw scam.' },
+  { pattern: /(gift.?card|amazon|shopee|lazada).{0,80}(claim|redeem|click|klik|continue|collect).{0,80}(minute|second|minit|saat|\d+\s*(min|sec))/i,
+    type: 'LUCKY_DRAW',
+    reason_bm: 'Mesej ini menawarkan hadiah dengan pautan dan kiraan masa menurun — penipuan.',
+    reason_en: 'This message offers a prize with a link and countdown timer — a scam.' },
 
   // ── Phishing URLs ──
   { pattern: /bit\.ly\/|tinyurl\.com\/|rb\.gy\/|cutt\.ly\//i,
@@ -50,7 +58,27 @@ const HIGH_RISK_PATTERNS = [
     reason_bm: 'Mesej ini mengandungi pautan palsu yang menyerupai portal kerajaan.',
     reason_en: 'This message contains a fake link mimicking a government portal.' },
 
-  // Job scam upfront
+  // ── Family emergency / "Ah Boy" impersonation scam ──
+  { pattern: /(number baru|new number|nombor baru|phone (rosak|spoil|broken)).{0,200}(accident|kemalangan|hospital|polis|police|bayar|pay|settle|RM\s*[\d,]+)/is,
+    type: 'FAMILY_EMERGENCY_SCAM',
+    reason_bm: 'Mesej ini meniru ahli keluarga dengan nombor baru dan meminta wang kecemasan — penipuan keluarga yang sangat biasa di Malaysia.',
+    reason_en: 'This message impersonates a family member with a new number and requests emergency money — a very common Malaysian family scam.' },
+  { pattern: /(accident|kemalangan).{0,150}(bayar|pay|settle|RM\s*[\d,]+|lawyer|peguam).{0,100}(police|polis|court|mahkamah)/is,
+    type: 'FAMILY_EMERGENCY_SCAM',
+    reason_bm: 'Mesej mendakwa kemalangan dan meminta wang untuk "selesai" dengan polis/peguam — penipuan.',
+    reason_en: 'Message claims an accident and requests money to "settle" with police/lawyer — a scam.' },
+  { pattern: /(jangan (bagitau|beritahu|cakap)|don.t tell|rahsia).{0,100}(bayar|pay|RM|wang|money)/is,
+    type: 'FAMILY_EMERGENCY_SCAM',
+    reason_bm: 'Meminta kerahsiaan dan wang pada masa yang sama adalah tanda jelas penipuan.',
+    reason_en: 'Requesting secrecy combined with a money request is a clear scam indicator.' },
+
+  // ── DuitNow QR fake payment scam ──
+  { pattern: /duitnow.{0,50}(qr|scan|bayar|payment|pay).{0,100}(countdown|timer|\d+\s*second|minit)/is,
+    type: 'PAYMENT_SCAM',
+    reason_bm: 'QR DuitNow dengan kiraan masa menurun — kemungkinan penipu meminta anda membayar bukan menerima.',
+    reason_en: 'DuitNow QR with countdown timer — likely a scammer requesting payment from you, not sending to you.' },
+
+  // ── Job scam upfront ──
   /bayar.{0,20}dahulu.{0,20}kerja|yuran.{0,20}pendaftaran.{0,20}kerja/i,
 ];
 
